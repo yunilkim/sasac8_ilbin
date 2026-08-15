@@ -41,6 +41,35 @@ def box_iou(box1, box2):
     return inter / union
 
 
+def read_label_polygons(txt_path):
+    """
+    segmentation 라벨 txt 를 읽어 [(클래스번호, [(x, y), (x, y), ...]), ...] 로 돌려준다.
+    좌표는 0~1 정규화된 값 그대로다. (그림을 그릴 때나 마스크를 만들 때 각자 픽셀로 바꾼다)
+    """
+    polygons = []
+
+    if not os.path.exists(txt_path):
+        return polygons
+
+    with open(txt_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            parts = line.strip().split()
+
+            # 클래스 1개 + 좌표 6개(꼭짓점 3개) 이상이어야 영역이 만들어진다
+            if len(parts) < 7:
+                continue
+
+            numbers = [float(v) for v in parts]
+            class_no = int(numbers[0])
+            values = numbers[1:]
+
+            # 짝수 번째가 x, 홀수 번째가 y
+            points = list(zip(values[0::2], values[1::2]))
+            polygons.append((class_no, points))
+
+    return polygons
+
+
 def read_label_boxes(txt_path, image_w, image_h):
     """
     라벨 txt 를 읽어 [(클래스, x1, y1, x2, y2), ...] 형태로 돌려준다.

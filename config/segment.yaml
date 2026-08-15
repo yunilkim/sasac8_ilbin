@@ -13,6 +13,8 @@ train: train/images
 val: valid/images
 test: test/images
 
+# detection 데이터셋과 같은 이미지를 쓰므로 클래스도 같다고 보고 적어둔다.
+# 라벨이 들어오면 step1_check.py 로 실제 클래스를 확인하고 다르면 고칠 것.
 names:
-  0: helmet
-  1: vest
+  0: reflective_jacket
+  1: safety_helmet

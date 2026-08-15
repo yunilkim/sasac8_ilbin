@@ -1,34 +1,44 @@
-# 안전장구(Vest & Helmet) 탐지 - detection vs segmentation 비교
+# 안전장구(Vest & Helmet) 탐지 - 라벨 방식과 모델 비교
 
-같은 이미지에 **라벨만 다르게 붙인 두 데이터셋**으로 YOLOv8n 모델을 각각 만들고,
+같은 이미지에 **라벨만 다르게 붙인 데이터셋**으로 모델을 각각 만들고,
 어느 쪽이 더 잘 맞추는지 비교하는 미니 프로젝트입니다.
 
-| 구분 | 라벨 | 모델 | 상태 |
+| 모델 | 라벨 | 종류 | 상태 |
 |------|------|------|------|
-| detection | 바운딩 박스 | `yolov8n.pt` | 데이터 준비됨 |
-| segmentation | 폴리곤 | `yolov8n-seg.pt` | 라벨 데이터 준비 중 |
+| `yolov8n` | 바운딩 박스 | detection | 데이터 준비됨 |
+| `yolov8n-seg` | 폴리곤 | segmentation | 라벨 데이터 준비 중 |
+| `Mask R-CNN` (torchvision) | 폴리곤 | segmentation | 라벨 데이터 준비 중 |
 
 ---
 
 ## 폴더 구조와 역할
 
+최상위 파일 이름 앞의 `step` 번호가 곧 실행 순서입니다.
+
 ```text
 sasac8_ilbin/
 ├── main.py                 # 전체 실행 순서 (필요한 줄의 주석을 풀어서 실행)
-├── train.py                # 학습 - train_detect(), train_segment()
-├── eval.py                 # 평가 - mAP, Precision, Recall, 속도
-├── predict.py              # 테스트 이미지 추론 후 결과 이미지 저장
-├── compare.py              # 두 모델 비교표/그래프 생성 (프로젝트 목표)
+├── step1_check.py          # 데이터 검사 (Preprocessing 폴더의 검사를 실행)
+├── step2_train.py          # 학습 - train_detect(), train_segment(), train_maskrcnn()
+├── step3_eval.py           # 평가 - mAP, Precision, Recall, 속도
+├── step4_predict.py        # 테스트 이미지 추론 후 결과 이미지 저장
+├── step5_compare.py        # 세 모델 비교표/그래프 생성 (프로젝트 목표)
 ├── config/
 │   ├── detect.yaml         # detection 데이터셋 경로 + 클래스
 │   └── segment.yaml        # segmentation 데이터셋 경로 + 클래스 (경로 미정)
 ├── Data/                   # 데이터셋 (용량이 커서 git 에 올리지 않음)
 │   └── vest-helmet.v1i_roboflow/
+├── Preprocessing/          # 학습 전 라벨 검사
+│   ├── check_sync.py       # 이미지-라벨 짝, split 별/전체 개수 확인
+│   ├── check_format.py     # 라벨 내용이 모델 형식에 맞는지 검사
+│   └── check_dataset.py    # 위 검사를 실행하고 문제를 csv 로 저장 (진입점)
+├── models/                 # torch 계열 모델 (YOLO 는 라이브러리가 다 해준다)
+│   ├── seg_dataset.py      # 폴리곤 라벨 -> 마스크/박스 로 바꾸는 Dataset
+│   └── mask_rcnn.py        # Mask R-CNN 생성 / 학습 / 평가 / 결과 그리기
 ├── utils/
-│   ├── dataset.py          # 데이터셋 개수/클래스 확인
-│   ├── metrics.py          # IoU 계산 (라벨 -> 박스 변환 포함)
-│   └── visualize.py        # 라벨 확인, 비교 그래프
-└── result/                 # 추론 결과, 비교표, 그래프 저장
+│   ├── metrics.py          # 라벨 읽기(박스/폴리곤), IoU 계산
+│   └── visualize.py        # 샘플 라벨 그리기, 비교 그래프
+└── result/                 # 검사 csv, 샘플 라벨 그림, 추론 결과, 비교표, mask_rcnn.pth
 ```
 
 ## 설치
@@ -37,32 +47,80 @@ sasac8_ilbin/
 pip install -r requirements.txt
 ```
 
+- `torch`, `torchvision` 은 GPU 를 쓰려면 https://pytorch.org 에서 CUDA 버전에 맞게 설치하세요.
+- `torchmetrics`, `pycocotools` 는 Mask R-CNN 의 mAP 계산에만 씁니다.
+  (YOLO 만 쓸 때는 없어도 동작합니다)
+
 ## 실행 순서
 
 ```bash
-# 1. 데이터셋 확인 (개수, 클래스 이름)
-python -m utils.dataset
+# 1. 데이터셋 검사 (라벨 형식, 이미지-라벨 짝, 개수)
+python step1_check.py
 
-# 2. detection 모델 학습
-python train.py
+# 2. 모델 학습
+python step2_train.py
 
 # 3. 평가
-python eval.py
+python step3_eval.py
 
 # 4. 테스트 이미지 추론
-python predict.py
+python step4_predict.py
 
-# 5. segmentation 데이터가 준비되면 두 모델 비교
-python compare.py
+# 5. 세 모델 비교
+python step5_compare.py
 ```
 
-## segmentation 데이터셋이 들어오면 할 일
+## 데이터셋 검사 (Preprocessing)
 
-1. `Data/` 아래에 segmentation 라벨 데이터셋 폴더를 넣는다.
-2. `config/segment.yaml` 의 `path` 를 그 폴더 경로로 수정한다.
-3. `compare.py` 의 `SEGMENT_TEST_DIR` 도 같은 폴더 기준으로 수정한다.
-4. `train.py` 에서 `train_segment()` 주석을 풀고 실행한다.
-5. `python compare.py` 로 비교표를 만든다.
+학습 전에 라벨이 제대로 만들어졌는지 확인합니다. 검사 항목은 다음과 같습니다.
+
+| 구분 | 검사 내용 | 문제 유형 |
+|------|-----------|-----------|
+| 동기화 | 이미지에 짝이 되는 라벨 txt 가 있는가 | `라벨없음` |
+| 동기화 | 라벨 txt 에 짝이 되는 이미지가 있는가 | `이미지없음` |
+| 동기화 | split 별 / 전체 이미지·라벨 개수 | (개수 출력) |
+| 형식 | 열 개수가 모델 형식에 맞는가 (detection 5칸 / segmentation 클래스+짝수 좌표) | `형식오류` |
+| 형식 | 폴리곤 꼭짓점이 3개 이상인가 | `꼭짓점부족` |
+| 형식 | 좌표가 0~1 로 정규화되어 있는가 | `좌표범위` |
+| 형식 | 클래스 번호가 `data.yaml` 범위 안인가 | `클래스번호` |
+| 형식 | 라벨 내용이 비어있지 않은가 | `빈파일` |
+
+문제가 있으면 `result/check_detect.csv` (또는 `check_segment.csv`) 로 저장됩니다.
+문제가 없으면 csv 는 만들어지지 않고, 어느 경우든 프로그램이 멈추지는 않습니다.
+
+```text
+split,image_file,label_file,problem_type,detail
+train,a_001.jpg,,라벨없음,짝이 되는 txt 파일 없음
+valid,c_003.jpg,c_003.txt,형식오류,3번째 줄 열 4개 (detection 은 5개)
+```
+
+### 샘플 라벨 눈으로 확인
+
+개수와 형식이 맞아도 라벨 좌표가 엉뚱한 곳에 찍혀 있을 수 있습니다.
+그래서 검사 마지막에 `train` 에서 무작위로 **3장**을 뽑아 라벨을 그린 그림을 저장합니다.
+
+- detection : 바운딩 **박스**로 그림 → `result/label_sample_detect.jpg`
+- segmentation : 폴리곤 **외곽선**으로 그림 → `result/label_sample_segment.jpg`
+- 클래스마다 색이 다르고 이름이 함께 표시되므로, 클래스 순서가 뒤바뀌었는지도 바로 보입니다.
+- 실행할 때마다 다른 이미지가 뽑히므로 여러 번 돌려보면 좋습니다.
+
+기본은 파일 저장만 합니다. 창으로도 띄우고 싶으면 `step1_check.py` 의
+`SHOW_SAMPLE = True` 로 바꾸세요. (창을 닫아야 다음 코드가 실행됩니다)
+뽑는 장수나 폴더는 `Preprocessing/check_dataset.py` 의
+`SAMPLE_COUNT`, `SAMPLE_SPLIT` 에서 바꿉니다.
+
+## Mask R-CNN 은 왜 따로 만드나
+
+YOLO 는 ultralytics 가 데이터 읽기·학습·평가를 전부 해주지만,
+torch 계열 모델은 직접 만들어야 합니다.
+
+- `models/seg_dataset.py` : YOLO 폴리곤 라벨(0~1 정규화)을 읽어
+  **마스크 이미지**와 **박스 좌표(픽셀)** 로 바꿔 줍니다. 클래스 번호는 0이 배경이라 +1 합니다.
+- `models/mask_rcnn.py` : 사전학습 Mask R-CNN 을 불러와 ROI Head 를 우리 클래스 수에 맞게
+  교체하고, 학습 루프와 평가를 직접 돌립니다.
+
+평가 지표는 YOLO 와 같은 기준으로 맞췄습니다.
+mAP 는 `torchmetrics`(COCO 방식), Precision/Recall/mIoU 는 IoU 0.5 기준으로 직접 계산합니다.
 
 ## 비교 항목
 
@@ -71,12 +129,25 @@ python compare.py
 | mAP50 / mAP50-95 | 대표적인 객체 탐지 정확도 지표 |
 | Precision / Recall / F1 | 정밀도, 재현율과 그 조화평균 |
 | mIoU | 정답 박스와 예측 박스가 겹치는 정도의 평균 |
-| mask mAP | 마스크 정확도 (segmentation 모델만 나옴, 참고용) |
+| mask mAP | 마스크 정확도 (yolov8n-seg 만 나옴, 참고용) |
 | 추론시간(ms) / FPS | 이미지 한 장 처리 속도 |
 | 학습시간(분) / 모델크기(MB) | 학습 비용과 모델 무게 |
+
+학습이 끝난 모델만 표에 들어갑니다. 결과는 `result/compare.csv`, `result/compare.jpg` 입니다.
+
+## segmentation 데이터셋이 들어오면 할 일
+
+1. `Data/` 아래에 segmentation 라벨 데이터셋 폴더를 넣는다.
+2. 경로를 **3곳**만 수정한다. (나머지는 여기서 자동으로 만들어진다)
+   - `Preprocessing/check_dataset.py` 의 `SEGMENT_DATASET`
+   - `config/segment.yaml` 의 `path` (yolov8n-seg 용)
+   - `step2_train.py` 의 `SEGMENT_DATASET` (Mask R-CNN 용)
+3. `python step1_check.py` 로 라벨 검사 (`check_segment_dataset()` 주석 해제)
+4. `step2_train.py` 에서 `train_segment()`, `train_maskrcnn()` 주석을 풀고 실행한다.
+5. `python step5_compare.py` 로 비교표를 만든다.
 
 ## 참고
 
 - 클래스 이름(`names`)은 `config/*.yaml` 과 데이터셋의 `data.yaml` 이 **순서까지** 같아야 합니다.
-- 경로는 Ultralytics 특성상 절대경로를 사용합니다. 다른 PC 에서는 `config/*.yaml` 의 `path` 한 줄만 바꾸면 됩니다.
+- 경로는 Ultralytics 특성상 `config/*.yaml` 만 절대경로를 사용합니다.
 - 설계 참고 문서: `ref/yolov8n_vest_helmet_implementation_plan.md`

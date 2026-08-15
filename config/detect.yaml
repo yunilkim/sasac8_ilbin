@@ -12,5 +12,5 @@ val: valid/images
 test: test/images
 
 names:
-  0: helmet
-  1: vest
+  0: reflective_jacket
+  1: safety_helmet

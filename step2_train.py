@@ -1,13 +1,14 @@
 """
-역할: YOLOv8n 학습
+역할: [2단계] 모델 학습
 
-이 프로젝트는 같은 이미지에 대해 두 가지 라벨로 모델을 만들고 비교한다.
-  - train_detect()  : detection 라벨  + yolov8n.pt      -> runs/detect/vest_helmet_detect
-  - train_segment() : segmentation 라벨 + yolov8n-seg.pt -> runs/segment/vest_helmet_seg
+이 프로젝트는 세 가지 모델을 만들어 비교한다.
+  - train_detect()   : detection 라벨    + yolov8n.pt      -> runs/detect/vest_helmet_detect
+  - train_segment()  : segmentation 라벨 + yolov8n-seg.pt  -> runs/segment/vest_helmet_seg
+  - train_maskrcnn() : segmentation 라벨 + Mask R-CNN(torchvision) -> result/mask_rcnn.pth
 
 나중에 비교표에 쓰려고 학습에 걸린 시간을 result/train_time.txt 에 적어둔다.
 
-실행 : python train.py
+실행 : python step2_train.py
 """
 
 import os
@@ -15,23 +16,38 @@ import time
 
 from ultralytics import YOLO
 
-# ---- 학습 설정 (필요하면 이 값만 바꾸면 된다) ----
+from models.mask_rcnn import train_model
+
+# ---- 공통 설정 ----
 DETECT_YAML = './config/detect.yaml'
 SEGMENT_YAML = './config/segment.yaml'
 
-EPOCHS = 50          # 학습 횟수
-IMGSZ = 640          # 입력 이미지 크기
-BATCH = 16           # 한 번에 학습할 이미지 수 (GPU 메모리 부족하면 8로 줄이기)
-DEVICE = 0           # 0 -> GPU, 'cpu' -> CPU
+# Mask R-CNN 은 yaml 이 아니라 폴더 경로를 직접 쓴다 (segmentation 데이터가 들어오면 수정)
+SEGMENT_DATASET = './Data/vest-helmet-seg'
+NUM_CLASSES = 2          # 배경을 뺀 클래스 수 (helmet, vest)
+
+# ---- YOLO 학습 설정 ----
+EPOCHS = 50              # 학습 횟수
+IMGSZ = 640              # 입력 이미지 크기
+BATCH = 16               # 한 번에 학습할 이미지 수 (GPU 메모리 부족하면 8로 줄이기)
+DEVICE = 0               # 0 -> GPU, 'cpu' -> CPU
 
 DETECT_NAME = 'vest_helmet_detect'
 SEGMENT_NAME = 'vest_helmet_seg'
+
+# ---- Mask R-CNN 학습 설정 ----
+# ResNet50 기반이라 yolov8n 보다 무겁다. epoch 과 batch 를 작게 잡는다.
+MASKRCNN_EPOCHS = 10
+MASKRCNN_BATCH = 2
+MASKRCNN_LR = 0.005
+MASKRCNN_PATH = './result/mask_rcnn.pth'
+MASKRCNN_NAME = 'mask_rcnn'
 
 TIME_LOG = './result/train_time.txt'
 
 
 def save_train_time(name, seconds):
-    """학습에 걸린 시간을 초 단위로 파일에 기록한다. (compare.py 에서 읽어 쓴다)"""
+    """학습에 걸린 시간을 초 단위로 파일에 기록한다. (step5_compare.py 에서 읽어 쓴다)"""
     os.makedirs(os.path.dirname(TIME_LOG), exist_ok=True)
 
     with open(TIME_LOG, 'a', encoding='utf-8') as f:
@@ -93,8 +109,26 @@ def train_segment():
     print(f'segmentation 학습 완료 -> runs/segment/{SEGMENT_NAME}/weights/best.pt')
 
 
+def train_maskrcnn():
+    """segmentation 라벨로 torchvision Mask R-CNN 을 학습한다."""
+    start = time.time()
+
+    os.makedirs(os.path.dirname(MASKRCNN_PATH), exist_ok=True)
+
+    train_model(dataset_dir=SEGMENT_DATASET,
+                num_classes=NUM_CLASSES,
+                save_path=MASKRCNN_PATH,
+                epochs=MASKRCNN_EPOCHS,
+                batch_size=MASKRCNN_BATCH,
+                lr=MASKRCNN_LR)
+
+    save_train_time(MASKRCNN_NAME, time.time() - start)
+    print(f'Mask R-CNN 학습 완료 -> {MASKRCNN_PATH}')
+
+
 if __name__ == '__main__':
     train_detect()
 
     # segmentation 데이터셋이 준비되면 아래 주석을 푼다
     # train_segment()
+    # train_maskrcnn()
