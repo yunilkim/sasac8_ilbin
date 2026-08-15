@@ -7,6 +7,9 @@
 
 YOLO 는 predict_images(), Mask R-CNN 은 predict_maskrcnn() 을 쓴다.
 
+  개별 실행 : predict_one('detect') 또는 위 함수를 직접 호출
+  일괄 실행 : predict_all() 을 부르면 config/run_config.py 의 RUN_MODELS 에 있는 것만 추론
+
 실행 : python step4_predict.py
 """
 
@@ -14,13 +17,14 @@ import os
 
 from ultralytics import YOLO
 
+from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import load_trained_model
 from models.mask_rcnn import predict_images as maskrcnn_predict
 from step2_train import MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET
 
-# ---- 추론 설정 ----
-DETECT_WEIGHTS = './runs/detect/vest_helmet_detect/weights/best.pt'
-SEGMENT_WEIGHTS = './runs/segment/vest_helmet_seg/weights/best.pt'
+# ---- 추론 설정 (가중치 경로는 config/run_config.py 에서 가져온다) ----
+DETECT_WEIGHTS = WEIGHTS['detect']
+SEGMENT_WEIGHTS = WEIGHTS['segment']
 
 DETECT_TEST_DIR = './Data/vest-helmet.v1i_roboflow/test/images'
 
@@ -84,9 +88,36 @@ def predict_maskrcnn(source=SEGMENT_TEST_DIR, save_name='predict_maskrcnn'):
     maskrcnn_predict(model, source, os.path.join(SAVE_DIR, save_name), CLASS_NAMES)
 
 
-if __name__ == '__main__':
-    predict_images(DETECT_WEIGHTS, DETECT_TEST_DIR, save_name='predict_detect')
+def predict_one(key):
+    """모델 하나(key)로 테스트 이미지를 추론한다."""
+    if key == 'detect':
+        return predict_images(DETECT_WEIGHTS, DETECT_TEST_DIR, save_name='predict_detect')
 
-    # segmentation 모델 학습이 끝나면 아래 주석을 푼다
-    # predict_images(SEGMENT_WEIGHTS, SEGMENT_TEST_DIR, save_name='predict_seg')
-    # predict_maskrcnn()
+    if key == 'segment':
+        return predict_images(SEGMENT_WEIGHTS, SEGMENT_TEST_DIR, save_name='predict_seg')
+
+    return predict_maskrcnn()
+
+
+def predict_all(run_models=RUN_MODELS):
+    """
+    RUN_MODELS 에 적힌 모델로 차례대로 추론한다.
+    학습이 안 끝나 가중치가 없는 모델은 건너뛴다.
+    """
+    print(f'추론할 모델 : {run_models}')
+
+    for key in run_models:
+        if key not in WEIGHTS:
+            print(f'[주의] 모르는 모델 이름입니다 : {key}')
+            continue
+
+        if not os.path.exists(WEIGHTS[key]):
+            print(f'[안내] {MODEL_NAMES[key]} 가중치가 없습니다. 먼저 학습하세요 : {WEIGHTS[key]}')
+            continue
+
+        print(f'\n===== {MODEL_NAMES[key]} 추론 시작 =====')
+        predict_one(key)
+
+
+if __name__ == '__main__':
+    predict_all()

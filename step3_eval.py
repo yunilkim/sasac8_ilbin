@@ -6,17 +6,23 @@ test 셋으로 mAP50, mAP50-95, Precision, Recall, 추론 속도를 구한다.
   - Mask R-CNN     : ultralytics 를 못 쓰므로 torchmetrics 와 직접 만든 IoU 로 계산 (eval_maskrcnn)
 (PR Curve, Confusion Matrix 그림은 ultralytics 가 runs/.../val 폴더에 자동 저장한다)
 
+  개별 실행 : eval_one('detect') 처럼 모델 하나만 평가
+  일괄 실행 : eval_all() 을 부르면 config/run_config.py 의 RUN_MODELS 에 있는 것만 평가
+
 실행 : python step3_eval.py
 """
 
+import os
+
 from ultralytics import YOLO
 
+from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import evaluate_model, load_trained_model
 from step2_train import MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET
 
-# ---- 평가 설정 ----
-DETECT_WEIGHTS = './runs/detect/vest_helmet_detect/weights/best.pt'
-SEGMENT_WEIGHTS = './runs/segment/vest_helmet_seg/weights/best.pt'
+# ---- 평가 설정 (가중치 경로는 config/run_config.py 에서 가져온다) ----
+DETECT_WEIGHTS = WEIGHTS['detect']
+SEGMENT_WEIGHTS = WEIGHTS['segment']
 
 DETECT_YAML = './config/detect.yaml'
 SEGMENT_YAML = './config/segment.yaml'
@@ -78,13 +84,44 @@ def print_scores(title, scores):
         print(f'{key:15s} : {value:.4f}')
 
 
+def eval_one(key):
+    """모델 하나(key)를 평가해서 지표 딕셔너리를 돌려준다."""
+    if key == 'detect':
+        return eval_model(DETECT_WEIGHTS, DETECT_YAML)
+
+    if key == 'segment':
+        return eval_model(SEGMENT_WEIGHTS, SEGMENT_YAML)
+
+    return eval_maskrcnn()
+
+
+def eval_all(run_models=RUN_MODELS):
+    """
+    RUN_MODELS 에 적힌 모델을 순서대로 평가한다.
+    학습이 안 끝나 가중치가 없는 모델은 건너뛴다.
+    돌려주는 값 : {모델키: 지표 딕셔너리}
+    """
+    print(f'평가할 모델 : {run_models}')
+
+    results = {}
+
+    for key in run_models:
+        if key not in WEIGHTS:
+            print(f'[주의] 모르는 모델 이름입니다 : {key}')
+            continue
+
+        if not os.path.exists(WEIGHTS[key]):
+            print(f'[안내] {MODEL_NAMES[key]} 가중치가 없습니다. 먼저 학습하세요 : {WEIGHTS[key]}')
+            continue
+
+        print(f'\n===== {MODEL_NAMES[key]} 평가 시작 =====')
+        scores = eval_one(key)
+        print_scores(MODEL_NAMES[key], scores)
+
+        results[key] = scores
+
+    return results
+
+
 if __name__ == '__main__':
-    detect_scores = eval_model(DETECT_WEIGHTS, DETECT_YAML)
-    print_scores('detection (yolov8n)', detect_scores)
-
-    # segmentation 모델 학습이 끝나면 아래 주석을 푼다
-    # segment_scores = eval_model(SEGMENT_WEIGHTS, SEGMENT_YAML)
-    # print_scores('segmentation (yolov8n-seg)', segment_scores)
-
-    # maskrcnn_scores = eval_maskrcnn()
-    # print_scores('segmentation (Mask R-CNN)', maskrcnn_scores)
+    eval_all()

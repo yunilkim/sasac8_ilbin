@@ -6,6 +6,9 @@
   - train_segment()  : segmentation 라벨 + yolov8n-seg.pt  -> runs/segment/vest_helmet_seg
   - train_maskrcnn() : segmentation 라벨 + Mask R-CNN(torchvision) -> result/mask_rcnn.pth
 
+  개별 실행 : 위 함수를 직접 부른다
+  일괄 실행 : train_all() 을 부르면 config/run_config.py 의 RUN_MODELS 에 있는 것만 학습한다
+
 나중에 비교표에 쓰려고 학습에 걸린 시간을 result/train_time.txt 에 적어둔다.
 
 실행 : python step2_train.py
@@ -16,6 +19,7 @@ import time
 
 from ultralytics import YOLO
 
+from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import train_model
 
 # ---- 공통 설정 ----
@@ -40,8 +44,10 @@ SEGMENT_NAME = 'vest_helmet_seg'
 MASKRCNN_EPOCHS = 10
 MASKRCNN_BATCH = 2
 MASKRCNN_LR = 0.005
-MASKRCNN_PATH = './result/mask_rcnn.pth'
 MASKRCNN_NAME = 'mask_rcnn'
+
+# 가중치 저장 위치는 config/run_config.py 한 곳에서 관리한다
+MASKRCNN_PATH = WEIGHTS['maskrcnn']
 
 TIME_LOG = './result/train_time.txt'
 
@@ -126,9 +132,29 @@ def train_maskrcnn():
     print(f'Mask R-CNN 학습 완료 -> {MASKRCNN_PATH}')
 
 
-if __name__ == '__main__':
-    train_detect()
+# 모델 구분값과 학습 함수를 짝지어 둔다 (train_all 이 이걸 보고 골라 실행한다)
+TRAIN_FUNCS = {
+    'detect': train_detect,
+    'segment': train_segment,
+    'maskrcnn': train_maskrcnn,
+}
 
-    # segmentation 데이터셋이 준비되면 아래 주석을 푼다
-    # train_segment()
-    # train_maskrcnn()
+
+def train_all(run_models=RUN_MODELS):
+    """
+    RUN_MODELS 에 적힌 모델을 순서대로 학습한다.
+    실행할 모델은 config/run_config.py 에서 정한다.
+    """
+    print(f'학습할 모델 : {run_models}')
+
+    for key in run_models:
+        if key not in TRAIN_FUNCS:
+            print(f'[주의] 모르는 모델 이름입니다 : {key}')
+            continue
+
+        print(f'\n===== {MODEL_NAMES[key]} 학습 시작 =====')
+        TRAIN_FUNCS[key]()
+
+
+if __name__ == '__main__':
+    train_all()

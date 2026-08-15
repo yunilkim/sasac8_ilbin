@@ -12,7 +12,8 @@
     - 추론 속도 : 이미지 한 장당 ms, FPS
     - 학습 시간, 모델 파일 크기
 
-학습이 끝난 모델만 표에 들어간다. (아직 없는 모델은 안내만 출력)
+비교는 세 모델이 모두 학습된 뒤에만 실행된다.
+하나라도 가중치가 없으면 무엇이 빠졌는지 알려주고 표를 만들지 않는다.
 결과는 result/compare.csv(표)와 result/compare.jpg(그래프)로 저장된다.
 
 실행 : python step5_compare.py
@@ -23,6 +24,7 @@ import os
 
 from ultralytics import YOLO
 
+from config.run_config import MODEL_KEYS, MODEL_NAMES, WEIGHTS
 from step2_train import (DETECT_NAME, MASKRCNN_NAME, MASKRCNN_PATH,
                          SEGMENT_DATASET, SEGMENT_NAME, read_train_time)
 from step3_eval import (DETECT_WEIGHTS, DETECT_YAML, SEGMENT_WEIGHTS,
@@ -132,37 +134,47 @@ def save_table_csv(scores, save_path=SAVE_CSV):
     print(f'비교표 저장 : {save_path}')
 
 
+def find_missing_models():
+    """
+    세 모델 중 아직 학습되지 않은(가중치 파일이 없는) 모델 목록을 돌려준다.
+    비어 있으면 전부 준비된 것이다.
+    """
+    return [key for key in MODEL_KEYS if not os.path.exists(WEIGHTS[key])]
+
+
+def collect_scores(key):
+    """모델 하나(key)의 비교 항목을 모아 돌려준다."""
+    if key == 'detect':
+        return collect_yolo_scores(DETECT_WEIGHTS, DETECT_YAML, DETECT_TEST_DIR, DETECT_NAME)
+
+    if key == 'segment':
+        return collect_yolo_scores(SEGMENT_WEIGHTS, SEGMENT_YAML, SEGMENT_TEST_DIR, SEGMENT_NAME)
+
+    return collect_maskrcnn_scores()
+
+
 def compare_models():
-    """학습이 끝난 모델들을 평가해서 비교표와 그래프를 만든다."""
+    """
+    세 모델을 모두 평가해서 비교표와 그래프를 만든다.
+    하나라도 학습이 안 되어 있으면 비교하지 않고 무엇이 빠졌는지 알려준다.
+    """
+    missing = find_missing_models()
+
+    if missing:
+        print('[안내] 아직 준비되지 않은 모델이 있어 비교를 실행하지 않습니다.')
+
+        for key in missing:
+            print(f'  - {MODEL_NAMES[key]} : 가중치 없음 ({WEIGHTS[key]})')
+
+        print('  config/run_config.py 의 RUN_MODELS 에 세 모델을 모두 넣고')
+        print('  step2_train.py 를 실행해 학습을 끝낸 뒤 다시 시도하세요.')
+        return None
+
     scores = {}
 
-    # 1) detection - yolov8n
-    if os.path.exists(DETECT_WEIGHTS):
-        print('=== yolov8n (detection) 평가 ===')
-        scores['yolov8n(detect)'] = collect_yolo_scores(
-            DETECT_WEIGHTS, DETECT_YAML, DETECT_TEST_DIR, DETECT_NAME)
-    else:
-        print('[안내] yolov8n 모델이 없습니다. step2_train.py 의 train_detect() 를 먼저 실행하세요.')
-
-    # 2) segmentation - yolov8n-seg
-    if os.path.exists(SEGMENT_WEIGHTS):
-        print('=== yolov8n-seg (segmentation) 평가 ===')
-        scores['yolov8n-seg'] = collect_yolo_scores(
-            SEGMENT_WEIGHTS, SEGMENT_YAML, SEGMENT_TEST_DIR, SEGMENT_NAME)
-    else:
-        print('[안내] yolov8n-seg 모델이 없습니다. step2_train.py 의 train_segment() 를 먼저 실행하세요.')
-
-    # 3) segmentation - Mask R-CNN
-    if os.path.exists(MASKRCNN_PATH):
-        print('=== Mask R-CNN (segmentation) 평가 ===')
-        scores['maskrcnn'] = collect_maskrcnn_scores()
-    else:
-        print('[안내] Mask R-CNN 모델이 없습니다. step2_train.py 의 train_maskrcnn() 을 먼저 실행하세요.')
-
-    # 비교하려면 최소 두 개는 있어야 한다
-    if len(scores) < 2:
-        print('비교할 모델이 2개 미만이라 표를 만들지 않습니다.')
-        return None
+    for key in MODEL_KEYS:
+        print(f'=== {MODEL_NAMES[key]} 평가 ===')
+        scores[MODEL_NAMES[key]] = collect_scores(key)
 
     print_table(scores)
     save_table_csv(scores)

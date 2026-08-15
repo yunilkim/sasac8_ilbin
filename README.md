@@ -24,6 +24,7 @@ sasac8_ilbin/
 ├── step4_predict.py        # 테스트 이미지 추론 후 결과 이미지 저장
 ├── step5_compare.py        # 세 모델 비교표/그래프 생성 (프로젝트 목표)
 ├── config/
+│   ├── run_config.py       # 어떤 모델을 실행할지 (RUN_MODELS), 가중치 경로
 │   ├── detect.yaml         # detection 데이터셋 경로 + 클래스
 │   └── segment.yaml        # segmentation 데이터셋 경로 + 클래스 (경로 미정)
 ├── Data/                   # 데이터셋 (용량이 커서 git 에 올리지 않음)
@@ -69,6 +70,28 @@ python step4_predict.py
 # 5. 세 모델 비교
 python step5_compare.py
 ```
+
+## 어떤 모델을 실행할지 정하기
+
+`config/run_config.py` 의 `RUN_MODELS` 한 줄로 정합니다.
+`step2_train.py`, `step3_eval.py`, `step4_predict.py` 가 모두 이 값을 봅니다.
+
+```python
+# segmentation 라벨이 아직 없는 지금
+RUN_MODELS = ['detect']
+
+# 라벨이 들어와서 세 모델을 한 번에 돌릴 때
+RUN_MODELS = ['detect', 'segment', 'maskrcnn']
+```
+
+| 방식 | 사용법 |
+|------|--------|
+| 일괄 실행 | `train_all()`, `eval_all()`, `predict_all()` → `RUN_MODELS` 에 있는 모델만 실행 |
+| 개별 실행 | `train_detect()`, `eval_one('segment')`, `predict_one('maskrcnn')` 처럼 직접 호출 |
+
+- 학습이 안 끝나 가중치가 없는 모델은 평가·추론에서 **건너뛰고 안내만** 출력합니다.
+- **비교(step5)는 세 모델이 모두 학습돼 있을 때만 실행**됩니다.
+  하나라도 없으면 어떤 모델의 가중치가 없는지 알려주고 표를 만들지 않습니다.
 
 ## 데이터셋 검사 (Preprocessing)
 
@@ -142,9 +165,10 @@ mAP 는 `torchmetrics`(COCO 방식), Precision/Recall/mIoU 는 IoU 0.5 기준으
    - `Preprocessing/check_dataset.py` 의 `SEGMENT_DATASET`
    - `config/segment.yaml` 의 `path` (yolov8n-seg 용)
    - `step2_train.py` 의 `SEGMENT_DATASET` (Mask R-CNN 용)
-3. `python step1_check.py` 로 라벨 검사 (`check_segment_dataset()` 주석 해제)
-4. `step2_train.py` 에서 `train_segment()`, `train_maskrcnn()` 주석을 풀고 실행한다.
-5. `python step5_compare.py` 로 비교표를 만든다.
+3. `config/run_config.py` 의 `RUN_MODELS` 를 세 모델 전부로 바꾼다.
+4. `python step1_check.py` 로 라벨 검사 (`check_segment_dataset()` 주석 해제)
+5. `python step2_train.py` → `python step3_eval.py` → `python step4_predict.py` 실행
+6. `python step5_compare.py` 로 비교표를 만든다.
 
 ## 참고
 
