@@ -1,8 +1,11 @@
 # 역할: 결과 저장 폴더
 # - check_detect.csv, check_segment.csv         : 라벨 검사에서 나온 문제 목록
 # - label_sample_detect.jpg, ..._segment.jpg    : 무작위 3장에 라벨을 그린 확인용 그림
+# - train_log.csv                               : 학습 이력 (조건 + 시간 + mAP50)
+# - weights/                                    : '지금 쓰는 모델' 가중치
+#     detect_best.pt / segment_best.pt / mask_rcnn.pth
+#     (YOLO 학습 이력은 runs/ 에 폴더로 쌓이고, best.pt 만 여기로 복사된다)
+# - eval_scores.csv                             : step3 평가 지표 (다시 평가하지 않아도 되게 저장)
 # - predict_detect/, predict_seg/, predict_maskrcnn/ : 추론 결과 이미지
 # - compare.csv, compare.jpg                    : 모델 비교표와 그래프
-# - train_time.txt                              : 학습에 걸린 시간 기록
-# - mask_rcnn.pth                               : Mask R-CNN 학습 가중치
 # 결과물은 다시 만들 수 있으므로 git 에는 올리지 않는다.

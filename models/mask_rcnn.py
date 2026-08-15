@@ -31,6 +31,13 @@ from utils.metrics import box_iou
 SCORE_THRESHOLD = 0.5
 IOU_THRESHOLD = 0.5
 
+# 학습률을 낮추는 주기와 비율
+# LR_STEP_SIZE epoch 마다 학습률에 LR_GAMMA 를 곱한다.
+# 너무 빨리 줄이면(예: 3 epoch 마다 1/10) 학습률이 금방 0에 가까워져
+# epoch 을 늘려도 뒤쪽에서는 사실상 학습이 되지 않는다.
+LR_STEP_SIZE = 5
+LR_GAMMA = 0.3
+
 
 def get_device(device=None):
     """GPU 가 있으면 cuda, 없으면 cpu 를 쓴다."""
@@ -111,12 +118,15 @@ def train_model(dataset_dir, num_classes, save_path,
     optimizer = torch.optim.SGD(params, lr=lr, momentum=0.9, weight_decay=0.0005)
 
     # 학습이 진행될수록 학습률을 낮춰 안정적으로 수렴시킨다
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=3, gamma=0.1)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=LR_STEP_SIZE, gamma=LR_GAMMA)
 
     for e in range(epochs):
         avg_loss = train_one_epoch(model, train_loader, optimizer, device)
         scheduler.step()
-        print(f'[EPOCH {e + 1}/{epochs}] avg_loss {avg_loss:.4f}')
+
+        # 지금 학습률이 얼마인지 같이 보여준다 (너무 빨리 줄어들면 여기서 보인다)
+        now_lr = optimizer.param_groups[0]['lr']
+        print(f'[EPOCH {e + 1}/{epochs}] avg_loss {avg_loss:.4f}  lr {now_lr:.6f}')
 
     torch.save(model.state_dict(), save_path)
     print(f'모델 저장 완료 : {save_path}')

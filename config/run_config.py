@@ -21,11 +21,15 @@ MODEL_NAMES = {
     'maskrcnn': 'maskrcnn',
 }
 
-# 학습이 끝나면 가중치가 저장되는 위치 (학습·평가·추론이 모두 이 경로를 쓴다)
+# '지금 쓰는 모델' 가중치 위치. 평가·추론·비교는 항상 여기를 본다.
+#
+# YOLO 학습 결과는 runs/detect/vest_helmet_detect, ...detect2, ...detect3 처럼
+# 실행할 때마다 새 폴더에 쌓인다(이력 보존). 학습이 끝나면 그 폴더의 best.pt 를
+# 아래 경로로 복사하기 때문에, 폴더 이름이 늘어나도 이 파일을 고칠 필요가 없다.
 WEIGHTS = {
-    'detect': './runs/detect/vest_helmet_detect/weights/best.pt',
-    'segment': './runs/segment/vest_helmet_seg/weights/best.pt',
-    'maskrcnn': './result/mask_rcnn.pth',
+    'detect': './result/weights/detect_best.pt',
+    'segment': './result/weights/segment_best.pt',
+    'maskrcnn': './result/weights/mask_rcnn.pth',
 }
 
 # ---- 여기를 고쳐서 실행할 모델을 정한다 ----

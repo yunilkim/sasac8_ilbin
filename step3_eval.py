@@ -9,6 +9,9 @@ test 셋으로 mAP50, mAP50-95, Precision, Recall, 추론 속도를 구한다.
   개별 실행 : eval_one('detect') 처럼 모델 하나만 평가
   일괄 실행 : eval_all() 을 부르면 config/run_config.py 의 RUN_MODELS 에 있는 것만 평가
 
+평가에는 시간이 걸리므로 결과를 result/eval_scores.csv 에 저장해 둔다.
+(나중에 수치를 다시 볼 때 평가를 또 돌리지 않아도 된다)
+
 실행 : python step3_eval.py
 """
 
@@ -19,6 +22,7 @@ from ultralytics import YOLO
 from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import evaluate_model, load_trained_model
 from step2_train import MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET
+from utils.table import save_table_csv
 
 # ---- 평가 설정 (가중치 경로는 config/run_config.py 에서 가져온다) ----
 DETECT_WEIGHTS = WEIGHTS['detect']
@@ -29,6 +33,9 @@ SEGMENT_YAML = './config/segment.yaml'
 
 IMGSZ = 640
 SPLIT = 'test'      # train / val / test
+
+# 평가 결과를 저장할 파일
+SAVE_CSV = './result/eval_scores.csv'
 
 
 def eval_model(weights, data_yaml, split=SPLIT):
@@ -95,10 +102,11 @@ def eval_one(key):
     return eval_maskrcnn()
 
 
-def eval_all(run_models=RUN_MODELS):
+def eval_all(run_models=RUN_MODELS, save_csv=SAVE_CSV):
     """
     RUN_MODELS 에 적힌 모델을 순서대로 평가한다.
     학습이 안 끝나 가중치가 없는 모델은 건너뛴다.
+    평가한 결과가 하나라도 있으면 csv 로 저장한다.
     돌려주는 값 : {모델키: 지표 딕셔너리}
     """
     print(f'평가할 모델 : {run_models}')
@@ -119,6 +127,10 @@ def eval_all(run_models=RUN_MODELS):
         print_scores(MODEL_NAMES[key], scores)
 
         results[key] = scores
+
+    # 표로 저장할 때는 보기 좋은 모델 이름을 쓴다
+    if results and save_csv:
+        save_table_csv({MODEL_NAMES[key]: value for key, value in results.items()}, save_csv)
 
     return results
 

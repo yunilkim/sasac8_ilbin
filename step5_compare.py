@@ -19,17 +19,16 @@
 실행 : python step5_compare.py
 """
 
-import csv
 import os
 
 from ultralytics import YOLO
 
 from config.run_config import MODEL_KEYS, MODEL_NAMES, WEIGHTS
-from step2_train import (DETECT_NAME, MASKRCNN_NAME, MASKRCNN_PATH,
-                         SEGMENT_DATASET, SEGMENT_NAME, read_train_time)
+from step2_train import MASKRCNN_PATH, SEGMENT_DATASET, read_train_time
 from step3_eval import (DETECT_WEIGHTS, DETECT_YAML, SEGMENT_WEIGHTS,
                         SEGMENT_YAML, eval_maskrcnn, eval_model)
 from utils.metrics import mean_iou
+from utils.table import print_table, save_table_csv
 from utils.visualize import draw_compare_plot
 
 # 각 모델의 테스트 이미지 폴더
@@ -49,7 +48,7 @@ def get_model_size(weights):
     return os.path.getsize(weights) / (1024 * 1024)
 
 
-def collect_yolo_scores(weights, data_yaml, test_dir, train_name):
+def collect_yolo_scores(key, weights, data_yaml, test_dir):
     """YOLO 모델 하나의 비교 항목을 모아 딕셔너리로 돌려준다."""
     # 1) mAP, Precision, Recall, 속도
     scores = eval_model(weights, data_yaml)
@@ -58,8 +57,8 @@ def collect_yolo_scores(weights, data_yaml, test_dir, train_name):
     model = YOLO(weights)
     scores['mIoU'] = mean_iou(model, test_dir)
 
-    # 3) 학습 시간(분)과 모델 크기(MB)
-    scores['학습시간(분)'] = read_train_time(train_name) / 60
+    # 3) 학습 시간(분)과 모델 크기(MB)  ※ 학습 시간은 result/train_log.csv 에서 읽는다
+    scores['학습시간(분)'] = read_train_time(key)
     scores['모델크기(MB)'] = get_model_size(weights)
 
     return scores
@@ -70,68 +69,10 @@ def collect_maskrcnn_scores():
     # mAP, Precision, Recall, mIoU, 속도가 한 번에 나온다
     scores = eval_maskrcnn()
 
-    scores['학습시간(분)'] = read_train_time(MASKRCNN_NAME) / 60
+    scores['학습시간(분)'] = read_train_time('maskrcnn')
     scores['모델크기(MB)'] = get_model_size(MASKRCNN_PATH)
 
     return scores
-
-
-def get_all_keys(scores):
-    """
-    모델마다 나오는 지표가 조금씩 달라서(예: mask mAP) 표에 쓸 항목을 모아 정리한다.
-    먼저 나온 순서를 그대로 유지한다.
-    """
-    keys = []
-
-    for model_scores in scores.values():
-        for key in model_scores:
-            if key not in keys:
-                keys.append(key)
-
-    return keys
-
-
-def print_table(scores):
-    """비교표를 화면에 출력한다. 없는 항목은 - 로 표시한다."""
-    names = list(scores.keys())
-    keys = get_all_keys(scores)
-
-    print()
-    print(f'{"항목":<16}' + ''.join(f'{name:>18}' for name in names))
-
-    for key in keys:
-        row = f'{key:<16}'
-
-        for name in names:
-            value = scores[name].get(key)
-            row += f'{value:>18.4f}' if value is not None else f'{"-":>18}'
-
-        print(row)
-
-    print()
-
-
-def save_table_csv(scores, save_path=SAVE_CSV):
-    """비교표를 csv 로 저장한다. (엑셀에서 열 수 있도록 utf-8-sig)"""
-    names = list(scores.keys())
-    keys = get_all_keys(scores)
-
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
-    with open(save_path, 'w', encoding='utf-8-sig', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(['항목'] + names)
-
-        for key in keys:
-            row = [key]
-
-            for name in names:
-                value = scores[name].get(key)
-                row.append(round(value, 4) if value is not None else '')
-
-            writer.writerow(row)
-
-    print(f'비교표 저장 : {save_path}')
 
 
 def find_missing_models():
@@ -145,10 +86,10 @@ def find_missing_models():
 def collect_scores(key):
     """모델 하나(key)의 비교 항목을 모아 돌려준다."""
     if key == 'detect':
-        return collect_yolo_scores(DETECT_WEIGHTS, DETECT_YAML, DETECT_TEST_DIR, DETECT_NAME)
+        return collect_yolo_scores(key, DETECT_WEIGHTS, DETECT_YAML, DETECT_TEST_DIR)
 
     if key == 'segment':
-        return collect_yolo_scores(SEGMENT_WEIGHTS, SEGMENT_YAML, SEGMENT_TEST_DIR, SEGMENT_NAME)
+        return collect_yolo_scores(key, SEGMENT_WEIGHTS, SEGMENT_YAML, SEGMENT_TEST_DIR)
 
     return collect_maskrcnn_scores()
 
@@ -177,7 +118,7 @@ def compare_models():
         scores[MODEL_NAMES[key]] = collect_scores(key)
 
     print_table(scores)
-    save_table_csv(scores)
+    save_table_csv(scores, SAVE_CSV)
 
     # 0~1 지표만 막대그래프로 그린다
     draw_compare_plot(scores)

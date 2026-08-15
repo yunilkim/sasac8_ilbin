@@ -38,8 +38,9 @@ sasac8_ilbin/
 │   └── mask_rcnn.py        # Mask R-CNN 생성 / 학습 / 평가 / 결과 그리기
 ├── utils/
 │   ├── metrics.py          # 라벨 읽기(박스/폴리곤), IoU 계산
-│   └── visualize.py        # 샘플 라벨 그리기, 비교 그래프
-└── result/                 # 검사 csv, 샘플 라벨 그림, 추론 결과, 비교표, mask_rcnn.pth
+│   ├── visualize.py        # 샘플 라벨 그리기, 비교 그래프
+│   └── table.py            # 지표를 표로 출력 / csv 저장
+└── result/                 # 검사 csv, 샘플 라벨 그림, 평가 결과, 추론 결과, 비교표
 ```
 
 ## 설치
@@ -92,6 +93,63 @@ RUN_MODELS = ['detect', 'segment', 'maskrcnn']
 - 학습이 안 끝나 가중치가 없는 모델은 평가·추론에서 **건너뛰고 안내만** 출력합니다.
 - **비교(step5)는 세 모델이 모두 학습돼 있을 때만 실행**됩니다.
   하나라도 없으면 어떤 모델의 가중치가 없는지 알려주고 표를 만들지 않습니다.
+
+## 비교하려면 학습 조건을 맞춰야 합니다
+
+비교 실험의 기본은 **알고 싶은 것 하나만 다르게 하고 나머지는 같게** 하는 것입니다.
+한쪽만 오래 학습하면 결과 차이가 라벨 덕인지 학습량 덕인지 구분할 수 없습니다.
+
+| | 항목 |
+|---|------|
+| **같게** | 같은 이미지, 같은 train/valid/test 분할 |
+| **같게** | 이미지 크기 (640) |
+| **같게** | 학습 종료 규칙 (epoch, patience) |
+| **같게** | 평가 split(test), conf/iou 임계값 |
+| **다르게** | **라벨 형태 (박스 ↔ 폴리곤)** ← 알고 싶은 것 |
+
+세 모델을 짝지어 보면 각 비교가 무엇을 말해주는지 분명해집니다.
+
+| 비교 쌍 | 다른 점 | 알 수 있는 것 |
+|---------|---------|---------------|
+| yolov8n ↔ yolov8n-seg | 라벨만 (모델 계열 같음) | 라벨 방식의 효과 |
+| yolov8n-seg ↔ Mask R-CNN | 모델만 (라벨 같음) | 모델 구조의 효과 |
+
+**Early Stopping** (`step2_train.py` 의 `EPOCHS=100, PATIENCE=15`)
+성능이 15 epoch 연속 나아지지 않으면 남은 epoch 을 건너뛰고 멈춥니다.
+`best.pt` 는 항상 가장 좋았던 epoch 의 가중치이므로 중간에 멈춰도 손해가 없습니다.
+모델마다 수렴에 걸리는 시간이 다르므로, epoch 수를 억지로 맞추기보다
+**각 모델을 수렴시키고 비교표의 `학습시간(분)` 을 함께 보는 방식**을 권합니다.
+
+## 학습 이력이 쌓이는 방식
+
+**재학습해도 이전 결과를 덮어쓰지 않습니다.** 실행할 때마다 `runs/` 아래에 새 폴더가 생깁니다.
+
+```text
+runs/detect/vest_helmet_detect/    <- 1회차 (args.yaml, results.csv, 그래프)
+runs/detect/vest_helmet_detect2/   <- 2회차
+runs/detect/vest_helmet_detect3/   <- 3회차
+                    ↓ 학습이 끝나면 best.pt 만 복사
+result/weights/detect_best.pt      <- '지금 쓰는 모델' (평가·추론·비교는 항상 여기를 본다)
+```
+
+각 폴더에 그때 쓴 설정(`args.yaml`)과 epoch별 지표(`results.csv`)가 통째로 남아 실험 이력이 됩니다.
+학습 폴더 하나가 약 20MB라 여러 번 쌓여도 부담이 없습니다.
+
+가중치는 `result/weights/` 로 복사되므로, **폴더 번호가 늘어나도 `config/run_config.py` 를 고칠 필요가 없습니다.**
+
+### 실험 노트 — `result/train_log.csv`
+
+학습이 끝날 때마다 실행 조건과 결과가 한 줄씩 쌓입니다. 폴더를 열어보지 않아도 한눈에 비교됩니다.
+
+```csv
+날짜,모델,실행폴더,epochs,patience,imgsz,batch,학습시간(분),mAP50
+2026-08-15 15:56,detect,./runs/detect/vest_helmet_detect,50,없음,640,16,95.4,0.9625
+```
+
+`mAP50` 은 그 실행의 `results.csv` 에서 가장 좋았던 값을 읽어 적습니다. 비교표의 `학습시간(분)` 도 이 파일에서 가져옵니다.
+
+> **Mask R-CNN은 예외입니다.** `.pth` 파일이 약 170MB로 커서 이력을 쌓지 않고
+> `result/weights/mask_rcnn.pth` 하나만 덮어씁니다. 조건과 결과는 `train_log.csv` 에 남습니다.
 
 ## 데이터셋 검사 (Preprocessing)
 
