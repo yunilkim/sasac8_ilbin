@@ -1,0 +1,5 @@
+# 역할: 결과 저장 폴더
+# - predict_detect/, predict_seg/ : 추론 결과 이미지
+# - compare.csv, compare.jpg      : 두 모델 비교표와 그래프
+# - train_time.txt                : 학습에 걸린 시간 기록
+# 결과물은 다시 만들 수 있으므로 git 에는 올리지 않는다.

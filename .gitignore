@@ -200,3 +200,25 @@ ref/
 data/
 conductor/
 superpowers/
+
+### 프로젝트 산출물 (푸시 대상에서 제외) ###
+# 데이터셋: 이미지/라벨 대용량이므로 추적하지 않음 (Windows 대소문자 대비 둘 다 명시)
+Data/
+
+# 모델 가중치 / 변환 모델
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# 이미지 산출물
+*.jpg
+*.jpeg
+*.png
+
+# Ultralytics 학습 출력
+runs/
+
+# 추론/평가 산출물 (폴더 구조만 유지)
+result/*
+!result/.gitkeep

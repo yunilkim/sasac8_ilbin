@@ -1,0 +1,16 @@
+# 역할: detection(바운딩 박스) 라벨 데이터셋 정의 파일
+# yolov8n 학습/평가 시 data 인자로 넘긴다.
+#
+# path : 데이터셋 루트 (Ultralytics 는 상대경로를 기본 데이터 폴더 기준으로 찾기 때문에 절대경로 사용)
+#        -> 다른 PC 에서 실행할 때는 이 한 줄만 자기 경로로 바꾸면 된다.
+# names: 클래스 번호와 이름. Data/vest-helmet.v1i_roboflow/data.yaml 과 순서까지 똑같아야 한다.
+#        (python -c "from utils.dataset import check_dataset; check_dataset()" 로 원본 클래스 확인 가능)
+
+path: C:\Leacture\DL\sasac8_ilbin\Data\vest-helmet.v1i_roboflow
+train: train/images
+val: valid/images
+test: test/images
+
+names:
+  0: helmet
+  1: vest

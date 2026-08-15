@@ -1,0 +1,8 @@
+# 설치 : pip install -r requirements.txt
+# torch 는 CUDA 버전에 맞춰 https://pytorch.org 에서 따로 설치하는 것을 권장
+
+ultralytics      # YOLOv8 학습/평가/추론
+opencv-python    # 이미지 읽기, 그리기
+PyYAML           # config/*.yaml 읽기
+matplotlib       # 그래프 그리기
+pandas           # 비교표 만들기
