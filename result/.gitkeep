@@ -1,6 +1,8 @@
 # 역할: 결과 저장 폴더
 # - check_detect.csv, check_segment.csv         : 라벨 검사에서 나온 문제 목록
+# - duplicate_origin.csv, duplicate_current.csv : split 간 중복 이미지 목록
 # - label_sample_detect.jpg, ..._segment.jpg    : 무작위 3장에 라벨을 그린 확인용 그림
+# - maskrcnn_convert_<split>.jpg                : Mask R-CNN 마스크 변환 확인용 그림
 # - train_log.csv                               : 학습 이력 (조건 + 시간 + mAP50)
 # - weights/                                    : '지금 쓰는 모델' 가중치
 #     detect_best.pt / segment_best.pt / mask_rcnn.pth

@@ -12,6 +12,7 @@ sassc8_CNN 에서 다룬 Faster R-CNN 에 '마스크를 예측하는 머리'가 
 평가 모드에서 model(images) 는 예측 딕셔너리(boxes, labels, scores, masks)를 돌려준다.
 """
 
+import csv
 import os
 import time
 
@@ -24,19 +25,18 @@ from torchvision.models.detection.mask_rcnn import MaskRCNNPredictor
 from torchvision import transforms
 from tqdm import tqdm
 
-from models.seg_dataset import IMAGE_EXT, get_dataloader
+from models.seg_dataset import IMAGE_EXT, get_dataloader, has_split
 from utils.metrics import box_iou
 
 # 예측을 '검출했다'고 인정할 최소 점수, 정답과 같다고 볼 최소 IoU
 SCORE_THRESHOLD = 0.5
 IOU_THRESHOLD = 0.5
 
-# 학습률을 낮추는 주기와 비율
-# LR_STEP_SIZE epoch 마다 학습률에 LR_GAMMA 를 곱한다.
-# 너무 빨리 줄이면(예: 3 epoch 마다 1/10) 학습률이 금방 0에 가까워져
-# epoch 을 늘려도 뒤쪽에서는 사실상 학습이 되지 않는다.
-LR_STEP_SIZE = 5
-LR_GAMMA = 0.3
+# 입력 이미지 크기
+# torchvision 기본값은 min_size=800 이라 640 짜리 우리 이미지를 800 으로 '늘려서' 넣는다.
+# YOLO 는 640 으로 학습하므로, 같은 조건으로 비교하려면 여기도 640 으로 맞춰야 한다.
+# (덤으로 메모리와 학습 시간도 줄어든다 : 1 epoch 29.7분 -> 21.3분)
+INPUT_SIZE = 640
 
 
 def get_device(device=None):
@@ -47,10 +47,11 @@ def get_device(device=None):
     return 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
-def load_model(num_classes):
+def load_model(num_classes, input_size=INPUT_SIZE):
     """
     사전학습된 Mask R-CNN 을 불러와 우리 클래스 수에 맞게 머리 부분을 바꾼다.
     num_classes : 배경을 뺀 실제 클래스 수 (helmet, vest -> 2)
+    input_size  : 모델에 들어갈 이미지 크기 (YOLO 와 맞추려고 640 을 쓴다)
     """
     model = maskrcnn_resnet50_fpn(weights=MaskRCNN_ResNet50_FPN_Weights.DEFAULT)
 
@@ -61,6 +62,10 @@ def load_model(num_classes):
     # 2) 마스크 예측 머리 교체
     in_features_mask = model.roi_heads.mask_predictor.conv5_mask.in_channels
     model.roi_heads.mask_predictor = MaskRCNNPredictor(in_features_mask, 256, num_classes + 1)
+
+    # 3) 입력 크기 고정 (기본값 800 으로 확대되는 것을 막는다)
+    model.transform.min_size = (input_size,)
+    model.transform.max_size = input_size
 
     return model
 
@@ -102,13 +107,98 @@ def train_one_epoch(model, loader, optimizer, device):
     return total_loss / len(loader)
 
 
+def freeze_batchnorm(model):
+    """
+    BatchNorm 을 고정한다.
+
+    검증할 때 loss 를 얻으려면 모델을 train 모드로 둬야 하는데(eval 모드는 예측만 돌려준다),
+    그러면 BatchNorm 이 검증 데이터로 통계를 갱신해 모델이 오염된다.
+    그래서 BatchNorm 만 따로 eval 모드로 돌려 통계가 바뀌지 않게 한다.
+    """
+    for module in model.modules():
+        if isinstance(module, torch.nn.BatchNorm2d):
+            module.eval()
+
+
+def validate_one_epoch(model, loader, device):
+    """
+    검증 데이터로 loss 를 구한다. (학습은 하지 않는다)
+    이 값이 더 이상 줄지 않으면 학습을 멈춘다.
+    """
+    model.train()          # loss 를 받으려면 train 모드여야 한다
+    freeze_batchnorm(model)  # 대신 BatchNorm 통계는 고정한다
+
+    total_loss = 0.0
+
+    with torch.no_grad():
+        for images, targets in tqdm(loader, desc='Valid', leave=False):
+            images = [img.to(device) for img in images]
+            targets = [{k: v.to(device) for k, v in t.items()} for t in targets]
+
+            loss_dict = model(images, targets)
+            total_loss += sum(loss_dict.values()).item()
+
+    return total_loss / len(loader)
+
+
+def save_epoch_log(log_path, rows):
+    """epoch 별 loss 를 csv 로 남긴다. (YOLO 의 results.csv 와 같은 역할)"""
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)
+
+    with open(log_path, 'w', encoding='utf-8-sig', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=['epoch', 'train_loss', 'val_loss', 'lr', 'best'])
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def make_run_dir(base_dir, name):
+    """
+    학습 결과를 담을 폴더를 만든다.
+    이미 있으면 뒤에 번호를 붙여 새 폴더를 만든다. (YOLO 와 같은 방식)
+    """
+    run_dir = os.path.join(base_dir, name)
+    number = 2
+
+    while os.path.exists(run_dir):
+        run_dir = os.path.join(base_dir, f'{name}{number}')
+        number += 1
+
+    os.makedirs(run_dir)
+
+    return run_dir
+
+
 def train_model(dataset_dir, num_classes, save_path,
-                epochs=10, batch_size=2, lr=0.005, device=None):
-    """Mask R-CNN 을 학습하고 가중치를 저장한다."""
+                epochs=30, batch_size=2, lr=0.005, patience=5,
+                run_dir=None, device=None):
+    """
+    Mask R-CNN 을 학습한다.
+
+    YOLO 와 마찬가지로
+      - epoch 마다 검증 데이터로 성능(loss)을 확인하고
+      - 가장 좋았던 epoch 의 가중치를 저장하며
+      - patience 번 연속 나아지지 않으면 남은 epoch 을 건너뛴다 (Early Stopping)
+
+    검증 데이터(valid)가 없으면 Early Stopping 없이 끝까지 학습하고
+    마지막 epoch 을 저장한다. (이 경우 화면에 안내가 나온다)
+
+    돌려주는 값 : {'best_epoch':…, 'best_val_loss':…, 'epochs_ran':…, 'log_path':…}
+    """
     device = get_device(device)
     print(f'학습 장치 : {device}')
 
-    train_loader = get_dataloader(dataset_dir, 'train', batch_size=batch_size, shuffle=True)
+    train_loader = get_dataloader(dataset_dir, 'train',
+                                  batch_size=batch_size, shuffle=True, augment=True)
+
+    # 검증 데이터가 있으면 Early Stopping 을 쓴다
+    use_valid = has_split(dataset_dir, 'valid')
+
+    if use_valid:
+        valid_loader = get_dataloader(dataset_dir, 'valid',
+                                      batch_size=batch_size, shuffle=False, augment=False)
+    else:
+        valid_loader = None
+        print('[안내] valid 마스크가 없어 Early Stopping 없이 끝까지 학습합니다.')
 
     model = load_model(num_classes)
     model.to(device)
@@ -117,21 +207,77 @@ def train_model(dataset_dir, num_classes, save_path,
     params = [p for p in model.parameters() if p.requires_grad]
     optimizer = torch.optim.SGD(params, lr=lr, momentum=0.9, weight_decay=0.0005)
 
-    # 학습이 진행될수록 학습률을 낮춰 안정적으로 수렴시킨다
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=LR_STEP_SIZE, gamma=LR_GAMMA)
+    # 학습이 진행될수록 학습률을 낮춰 안정적으로 수렴시킨다.
+    #
+    # 코사인 곡선을 따라 매 epoch 조금씩 줄인다 (T_max epoch 에 걸쳐 0 까지).
+    # 계단식(StepLR)으로 뚝뚝 떨어뜨리면, 계단과 계단 사이에서 loss 가 정체됐다가
+    # 다음 계단에서 다시 내려가는 일이 잦다. 그러면 Early Stopping 이
+    # '아직 수렴 안 했는데' 멈춰버린다. 부드럽게 줄이면 그런 착시가 없다.
+    # (YOLO 도 연속적으로 줄이는 방식이라 두 모델의 성격이 맞는다)
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
-    for e in range(epochs):
-        avg_loss = train_one_epoch(model, train_loader, optimizer, device)
+    best_loss = float('inf')
+    best_epoch = 0
+    bad_count = 0        # 연속으로 나아지지 않은 횟수
+    rows = []
+
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+    for e in range(1, epochs + 1):
+        train_loss = train_one_epoch(model, train_loader, optimizer, device)
+        now_lr = optimizer.param_groups[0]['lr']
         scheduler.step()
 
-        # 지금 학습률이 얼마인지 같이 보여준다 (너무 빨리 줄어들면 여기서 보인다)
-        now_lr = optimizer.param_groups[0]['lr']
-        print(f'[EPOCH {e + 1}/{epochs}] avg_loss {avg_loss:.4f}  lr {now_lr:.6f}')
+        val_loss = validate_one_epoch(model, valid_loader, device) if use_valid else None
 
-    torch.save(model.state_dict(), save_path)
-    print(f'모델 저장 완료 : {save_path}')
+        # 검증 loss 가 있으면 그걸로, 없으면 train loss 로 좋고 나쁨을 판단한다
+        score = val_loss if val_loss is not None else train_loss
+        is_best = score < best_loss
 
-    return model
+        if is_best:
+            best_loss = score
+            best_epoch = e
+            bad_count = 0
+            torch.save(model.state_dict(), save_path)
+        else:
+            bad_count += 1
+
+        rows.append({
+            'epoch': e,
+            'train_loss': round(train_loss, 4),
+            'val_loss': round(val_loss, 4) if val_loss is not None else '',
+            'lr': f'{now_lr:.6f}',
+            'best': 'O' if is_best else '',
+        })
+
+        text = f'[EPOCH {e}/{epochs}] train {train_loss:.4f}'
+        if val_loss is not None:
+            text += f'  val {val_loss:.4f}'
+        text += f'  lr {now_lr:.6f}'
+        if is_best:
+            text += '  <- best'
+        print(text)
+
+        # Early Stopping : 검증 데이터가 있을 때만 동작한다
+        if use_valid and bad_count >= patience:
+            print(f'{patience} epoch 연속 나아지지 않아 학습을 멈춥니다. '
+                  f'(가장 좋았던 epoch {best_epoch})')
+            break
+
+    log_path = os.path.join(run_dir, 'results.csv') if run_dir else None
+
+    if log_path:
+        save_epoch_log(log_path, rows)
+        print(f'epoch 기록 저장 : {log_path}')
+
+    print(f'가장 좋았던 epoch {best_epoch} (loss {best_loss:.4f}) 의 가중치를 저장했습니다 : {save_path}')
+
+    return {
+        'best_epoch': best_epoch,
+        'best_val_loss': best_loss,
+        'epochs_ran': len(rows),
+        'log_path': log_path,
+    }
 
 
 def match_boxes(pred_boxes, pred_labels, true_boxes, true_labels):

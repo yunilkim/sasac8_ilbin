@@ -27,8 +27,9 @@ from datetime import datetime
 
 from ultralytics import YOLO
 
-from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
-from models.mask_rcnn import train_model
+from config.run_config import CONFIRM_RUN, MODEL_NAMES, RUN_MODELS, WEIGHTS
+from models.mask_rcnn import INPUT_SIZE, make_run_dir, train_model
+from utils.run_info import confirm_run
 
 # ---- 공통 설정 ----
 DETECT_YAML = './config/detect.yaml'
@@ -52,12 +53,20 @@ DETECT_NAME = 'vest_helmet_detect'
 SEGMENT_NAME = 'vest_helmet_seg'
 
 # ---- Mask R-CNN 학습 설정 ----
-# ResNet50 기반이라 yolov8n 보다 무겁다. batch 를 작게 잡는다.
-# 세 모델을 비교할 때는 학습 조건을 맞춰야 하므로, segmentation 라벨이 들어오면
-# 실제 걸리는 시간을 보고 epoch 을 정한다. (지금 값은 임시)
+# ResNet50 기반이라 yolov8n 보다 훨씬 무겁다. (실측 1 epoch 약 21분)
+# 사전학습(COCO) 모델을 우리 클래스에 맞추는 것이라 30 epoch 이면 수렴한다.
 MASKRCNN_EPOCHS = 30
-MASKRCNN_BATCH = 2
+
+# batch 4 + lr 0.005 = 이미지당 0.00125 로, torchvision 표준 레시피(batch 16 / lr 0.02)와 같다.
+# 4GB GPU 에서 2.0GB 를 쓰므로 여유가 있다. (batch 를 더 키워도 속도는 거의 그대로다)
+MASKRCNN_BATCH = 4
 MASKRCNN_LR = 0.005
+MASKRCNN_NAME = 'vest_helmet_maskrcnn'
+
+# Early Stopping 인내 epoch.
+# 학습률이 코사인 곡선으로 매끄럽게 줄어들어 '계단 때문에 생기는 정체'가 없으므로,
+# 이 값은 순수하게 '지표가 흔들리는 것을 얼마나 견딜까' 만 뜻한다.
+MASKRCNN_PATIENCE = 7
 
 # 가중치 저장 위치는 config/run_config.py 한 곳에서 관리한다
 MASKRCNN_PATH = WEIGHTS['maskrcnn']
@@ -163,6 +172,25 @@ def train_yolo(key, base_model, data_yaml, run_name):
     YOLO 계열(detect / segment) 학습을 공통으로 처리한다.
     exist_ok 를 주지 않으므로 같은 이름이 있으면 뒤에 번호가 붙은 새 폴더가 만들어진다.
     """
+    # 실행 전에 어떤 설정으로 도는지 보여준다 (CONFIRM_RUN 이 True 면 폴더명 확인까지)
+    settings = {
+        '모델': f'{MODEL_NAMES[key]} ({base_model})',
+        '데이터': data_yaml,
+        'epochs': EPOCHS,
+        'patience': PATIENCE,
+        'imgsz': IMGSZ,
+        'batch': BATCH,
+        'device': DEVICE,
+        '가중치 저장': WEIGHTS[key],
+    }
+
+    ok, run_name = confirm_run(f'{MODEL_NAMES[key]} 학습', settings,
+                               run_name=run_name, confirm=CONFIRM_RUN)
+
+    if not ok:
+        print('학습을 취소했습니다.')
+        return
+
     start = time.time()
 
     model = YOLO(base_model)
@@ -198,24 +226,50 @@ def train_segment():
 def train_maskrcnn():
     """
     segmentation 라벨로 torchvision Mask R-CNN 을 학습한다.
-    가중치 파일이 170MB 정도로 커서 이력을 쌓지 않고 한 개만 덮어쓴다.
-    (조건과 결과는 train_log.csv 에 남는다)
+
+    YOLO 와 마찬가지로 epoch 마다 검증하고, 가장 좋았던 epoch 의 가중치를 저장하며,
+    나아지지 않으면 Early Stopping 으로 멈춘다.
+    epoch 별 기록은 runs/maskrcnn/<이름>/results.csv 에 남는다.
+    (가중치 파일이 170MB 로 커서 이력은 기록만 쌓고 가중치는 한 개만 덮어쓴다)
     """
+    settings = {
+        '모델': 'Mask R-CNN (torchvision)',
+        '데이터': SEGMENT_DATASET,
+        'epochs': MASKRCNN_EPOCHS,
+        'patience': MASKRCNN_PATIENCE,
+        'imgsz': f'{INPUT_SIZE} (YOLO 와 동일)',
+        'batch': MASKRCNN_BATCH,
+        'lr': f'{MASKRCNN_LR} (이미지당 {MASKRCNN_LR / MASKRCNN_BATCH:.5f})',
+        '학습률 스케줄': 'CosineAnnealing (0 까지 매끄럽게 감소)',
+        '증강': '좌우반전 + 색상변화 (train 만)',
+        '가중치 저장': MASKRCNN_PATH,
+    }
+
+    ok, run_name = confirm_run('Mask R-CNN 학습', settings,
+                               run_name=MASKRCNN_NAME, confirm=CONFIRM_RUN)
+
+    if not ok:
+        print('학습을 취소했습니다.')
+        return
+
+    run_dir = make_run_dir('./runs/maskrcnn', run_name)
+    print(f'학습 결과 폴더 : {run_dir}')
+
     start = time.time()
 
-    os.makedirs(os.path.dirname(MASKRCNN_PATH), exist_ok=True)
-
-    train_model(dataset_dir=SEGMENT_DATASET,
-                num_classes=NUM_CLASSES,
-                save_path=MASKRCNN_PATH,
-                epochs=MASKRCNN_EPOCHS,
-                batch_size=MASKRCNN_BATCH,
-                lr=MASKRCNN_LR)
+    result = train_model(dataset_dir=SEGMENT_DATASET,
+                         num_classes=NUM_CLASSES,
+                         save_path=MASKRCNN_PATH,
+                         epochs=MASKRCNN_EPOCHS,
+                         batch_size=MASKRCNN_BATCH,
+                         lr=MASKRCNN_LR,
+                         patience=MASKRCNN_PATIENCE,
+                         run_dir=run_dir)
 
     minutes = (time.time() - start) / 60
 
-    # Mask R-CNN 은 results.csv 가 없어 mAP 칸은 비워둔다 (step3_eval 결과로 확인)
-    save_train_log('maskrcnn', MASKRCNN_PATH, MASKRCNN_EPOCHS, '-', minutes)
+    # mAP 칸에는 값이 없다 (Mask R-CNN 은 loss 로 판단하므로 mAP 는 step3_eval 에서 확인)
+    save_train_log('maskrcnn', run_dir, result['epochs_ran'], MASKRCNN_PATIENCE, minutes)
     print(f'Mask R-CNN 학습 완료 -> {MASKRCNN_PATH}')
 
 

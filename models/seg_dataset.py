@@ -1,77 +1,111 @@
 """
-역할: segmentation 라벨(폴리곤)을 torch 모델이 먹을 수 있는 형태로 바꿔주는 Dataset
+역할: Mask R-CNN 학습에 쓸 데이터를 읽어오는 Dataset
 
-YOLO 라벨과 torch(Mask R-CNN) 가 원하는 형태가 다르다.
-  YOLO 라벨 : <클래스> <x1> <y1> <x2> <y2> ...   (0~1 로 정규화된 폴리곤 꼭짓점)
-  Mask R-CNN : boxes  -> [x1, y1, x2, y2] 픽셀 좌표
-               labels -> 클래스 번호 (0 은 배경이라 +1 해서 넣는다)
-               masks  -> 0/1 로 채워진 이미지 크기의 마스크
+Preprocessing/convert_to_maskrcnn.py 가 미리 만들어 둔 마스크 파일(npz)을 읽는다.
+학습할 때마다 폴리곤을 그리지 않으므로 빠르고, Mask R-CNN 만 따로 돌릴 수도 있다.
 
-그래서 폴리곤을 그려서 마스크를 만들고, 폴리곤을 감싸는 사각형으로 박스를 만든다.
+  <데이터셋>/<split>/images/<이름>.jpg   : 원본 이미지
+  <데이터셋>/<split>/masks/<이름>.npz    : 변환된 마스크 (masks, classes, boxes)
+
+Mask R-CNN 이 요구하는 형태
+  boxes  -> [x1, y1, x2, y2] 픽셀 좌표
+  labels -> 클래스 번호 (0 은 배경이라 +1 해서 넣는다)
+  masks  -> 0/1 로 채워진 이미지 크기의 마스크 (객체마다 한 장)
+
+--- 데이터 증강 ---
+YOLO 는 학습할 때 좌우반전·색상변화 같은 증강을 알아서 넣는다.
+Mask R-CNN 쪽에 증강이 없으면 비교 결과가 '모델 차이'가 아니라 '증강 유무 차이'가 되므로,
+train 에서만 YOLO 와 비슷한 수준의 증강을 넣는다.
+  - 좌우 반전 : 이미지·마스크·박스를 함께 뒤집는다
+  - 색상 변화 : 이미지만 바꾼다 (위치가 안 바뀌므로 라벨은 그대로)
 """
 
 import os
+import random
 
 import numpy as np
 import torch
-from PIL import Image, ImageDraw
+from PIL import Image, ImageOps
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
-from utils.metrics import read_label_polygons
-
 IMAGE_EXT = ('.jpg', '.jpeg', '.png')
 
-
-def polygon_to_mask(points, image_w, image_h):
-    """정규화된 폴리곤 좌표로 0/1 마스크 이미지를 그린다."""
-    mask_image = Image.new('L', (image_w, image_h), 0)
-    draw = ImageDraw.Draw(mask_image)
-
-    # 0~1 값을 픽셀 좌표로 바꾼다
-    xy = [(x * image_w, y * image_h) for x, y in points]
-    draw.polygon(xy, outline=1, fill=1)
-
-    return np.array(mask_image, dtype=np.uint8)
+# 증강 세기 (YOLO 기본값과 비슷하게 맞췄다)
+FLIP_PROB = 0.5         # 좌우 반전 확률 (YOLO fliplr=0.5)
+BRIGHTNESS = 0.4        # 밝기 변화 폭 (YOLO hsv_v=0.4)
+SATURATION = 0.7        # 채도 변화 폭 (YOLO hsv_s=0.7)
+HUE = 0.015             # 색조 변화 폭 (YOLO hsv_h=0.015)
 
 
-def polygon_to_box(points, image_w, image_h):
-    """폴리곤을 감싸는 사각형 [x1, y1, x2, y2] 를 픽셀 좌표로 돌려준다."""
-    xs = [x * image_w for x, y in points]
-    ys = [y * image_h for x, y in points]
+def find_image_path(image_dir, name):
+    """확장자를 모르는 상태에서 이미지 파일을 찾는다."""
+    for ext in IMAGE_EXT:
+        path = os.path.join(image_dir, name + ext)
 
-    return [min(xs), min(ys), max(xs), max(ys)]
+        if os.path.exists(path):
+            return path
+
+    return None
+
+
+def flip_horizontal(image, masks, boxes):
+    """
+    이미지를 좌우로 뒤집고 마스크와 박스도 같이 뒤집는다.
+    박스는 왼쪽 끝과 오른쪽 끝이 서로 바뀐다 : x1 -> W - x2,  x2 -> W - x1
+    """
+    image_w = image.size[0]
+
+    image = ImageOps.mirror(image)
+    masks = masks[:, :, ::-1].copy()      # 마지막 축(가로)을 뒤집는다
+
+    boxes = boxes.copy()
+    old_x1 = boxes[:, 0].copy()
+    boxes[:, 0] = image_w - boxes[:, 2]
+    boxes[:, 2] = image_w - old_x1
+
+    return image, masks, boxes
 
 
 class SegDataset(Dataset):
-    """segmentation 라벨 폴더를 읽어 (이미지, 타겟) 을 돌려주는 데이터셋"""
+    """변환된 마스크 폴더를 읽어 (이미지, 타겟) 을 돌려주는 데이터셋"""
 
-    def __init__(self, image_dir):
-        self.image_dir = image_dir
-        self.label_dir = image_dir.replace('images', 'labels')
+    def __init__(self, dataset_dir, split, augment=False):
+        self.image_dir = os.path.join(dataset_dir, split, 'images')
+        self.mask_dir = os.path.join(dataset_dir, split, 'masks')
+        self.augment = augment
         self.to_tensor = transforms.ToTensor()
 
-        # 라벨이 없거나 폴리곤이 하나도 없는 이미지는 학습에 쓸 수 없으므로 미리 걸러낸다
+        # 색상 변화는 이미지 내용만 바꾸므로 라벨을 건드리지 않는다
+        self.color_jitter = transforms.ColorJitter(brightness=BRIGHTNESS,
+                                                   saturation=SATURATION,
+                                                   hue=HUE)
+
+        if not os.path.isdir(self.mask_dir):
+            raise FileNotFoundError(
+                f'변환된 마스크 폴더가 없습니다 : {self.mask_dir}\n'
+                f'  python -m Preprocessing.convert_to_maskrcnn 을 먼저 실행하세요.')
+
+        # 마스크와 이미지가 짝을 이루는 것만 쓴다
         self.samples = []
 
-        for file_name in sorted(os.listdir(image_dir)):
-            if not file_name.lower().endswith(IMAGE_EXT):
+        for mask_file in sorted(os.listdir(self.mask_dir)):
+            if not mask_file.endswith('.npz'):
                 continue
 
-            txt_path = os.path.join(self.label_dir, os.path.splitext(file_name)[0] + '.txt')
+            name = os.path.splitext(mask_file)[0]
+            image_path = find_image_path(self.image_dir, name)
 
-            if not os.path.exists(txt_path):
-                continue
-
-            if len(read_label_polygons(txt_path)) == 0:
+            if image_path is None:
                 continue
 
             self.samples.append({
-                'image_path': os.path.join(image_dir, file_name),
-                'label_path': txt_path,
+                'image_path': image_path,
+                'mask_path': os.path.join(self.mask_dir, mask_file),
             })
 
-        print(f'{image_dir} : 학습에 쓸 이미지 {len(self.samples)}개')
+        state = '증강 사용' if augment else '증강 없음'
+        print(f'{self.mask_dir} : 이미지 {len(self.samples)}개 ({state})')
 
     def __len__(self):
         return len(self.samples)
@@ -80,34 +114,27 @@ class SegDataset(Dataset):
         sample = self.samples[index]
 
         image = Image.open(sample['image_path']).convert('RGB')
-        image_w, image_h = image.size
 
-        boxes = []
-        labels = []
-        masks = []
+        data = np.load(sample['mask_path'])
+        masks = data['masks']       # (객체수, H, W) 0/1
+        classes = data['classes']   # (객체수,) 0부터
+        boxes = data['boxes'].astype(np.float32)   # (객체수, 4) 픽셀 좌표
 
-        for class_no, points in read_label_polygons(sample['label_path']):
-            box = polygon_to_box(points, image_w, image_h)
+        # train 에서만 증강한다
+        if self.augment:
+            if random.random() < FLIP_PROB:
+                image, masks, boxes = flip_horizontal(image, masks, boxes)
 
-            # 너비나 높이가 0 인 박스는 학습 중 오류가 나므로 건너뛴다
-            if box[2] <= box[0] or box[3] <= box[1]:
-                continue
-
-            boxes.append(box)
-            labels.append(class_no + 1)     # 0 은 배경이라 1부터 시작
-            masks.append(polygon_to_mask(points, image_w, image_h))
-
-        boxes = torch.tensor(boxes, dtype=torch.float32)
-        labels = torch.tensor(labels, dtype=torch.int64)
-        masks = torch.tensor(np.array(masks), dtype=torch.uint8)
+            image = self.color_jitter(image)
 
         target = {
-            'boxes': boxes,
-            'labels': labels,
-            'masks': masks,
+            'boxes': torch.tensor(boxes, dtype=torch.float32),
+            'labels': torch.tensor(classes + 1, dtype=torch.int64),   # 0 은 배경
+            'masks': torch.tensor(masks, dtype=torch.uint8),
             'image_id': torch.tensor([index]),
-            'area': (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1]),
-            'iscrowd': torch.zeros(len(labels), dtype=torch.int64),
+            'area': torch.tensor((boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1]),
+                                 dtype=torch.float32),
+            'iscrowd': torch.zeros(len(classes), dtype=torch.int64),
         }
 
         return self.to_tensor(image), target
@@ -121,13 +148,13 @@ def collate_fn(batch):
     return tuple(zip(*batch))
 
 
-def get_dataloader(dataset_dir, split, batch_size=2, shuffle=True):
+def get_dataloader(dataset_dir, split, batch_size=2, shuffle=True, augment=False):
     """
-    dataset_dir/split/images 폴더로 DataLoader 를 만든다.
-    예) get_dataloader('./Data/vest-helmet-seg', 'train')
+    dataset_dir/split 로 DataLoader 를 만든다.
+    증강은 train 에서만 켠다.
+    예) get_dataloader('./Data/vest-helmet_crop_dedup_seg', 'train', augment=True)
     """
-    image_dir = os.path.join(dataset_dir, split, 'images')
-    dataset = SegDataset(image_dir)
+    dataset = SegDataset(dataset_dir, split, augment=augment)
 
     loader = DataLoader(dataset,
                         batch_size=batch_size,
@@ -136,3 +163,13 @@ def get_dataloader(dataset_dir, split, batch_size=2, shuffle=True):
                         collate_fn=collate_fn)
 
     return loader
+
+
+def has_split(dataset_dir, split):
+    """그 split 에 변환된 마스크가 있는지 확인한다."""
+    mask_dir = os.path.join(dataset_dir, split, 'masks')
+
+    if not os.path.isdir(mask_dir):
+        return False
+
+    return any(f.endswith('.npz') for f in os.listdir(mask_dir))

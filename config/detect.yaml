@@ -6,7 +6,7 @@
 # names: 클래스 번호와 이름. Data/vest-helmet.v1i_roboflow/data.yaml 과 순서까지 똑같아야 한다.
 #        (python -c "from utils.dataset import check_dataset; check_dataset()" 로 원본 클래스 확인 가능)
 
-path: C:\Leacture\DL\sasac8_ilbin\Data\vest-helmet.v1i_roboflow
+path: C:\Leacture\DL\sasac8_ilbin\Data\vest-helmet_crop_dedup
 train: train/images
 val: valid/images
 test: test/images

@@ -21,6 +21,7 @@ from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import load_trained_model
 from models.mask_rcnn import predict_images as maskrcnn_predict
 from step2_train import MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET
+from utils.run_info import print_settings
 
 # ---- 추론 설정 (가중치 경로는 config/run_config.py 에서 가져온다) ----
 DETECT_WEIGHTS = WEIGHTS['detect']
@@ -90,6 +91,16 @@ def predict_maskrcnn(source=SEGMENT_TEST_DIR, save_name='predict_maskrcnn'):
 
 def predict_one(key):
     """모델 하나(key)로 테스트 이미지를 추론한다."""
+    source = DETECT_TEST_DIR if key == 'detect' else SEGMENT_TEST_DIR
+
+    print_settings(f'{MODEL_NAMES[key]} 추론', {
+        '가중치': WEIGHTS[key],
+        '입력 이미지': source,
+        'conf': CONF,
+        'imgsz': IMGSZ,
+        '결과 저장': f'{SAVE_DIR}/predict_{key}',
+    })
+
     if key == 'detect':
         return predict_images(DETECT_WEIGHTS, DETECT_TEST_DIR, save_name='predict_detect')
 

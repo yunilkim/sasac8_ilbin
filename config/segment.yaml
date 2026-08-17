@@ -1,14 +1,14 @@
 # 역할: segmentation(폴리곤) 라벨 데이터셋 정의 파일
 # yolov8n-seg 학습/평가 시 data 인자로 넘긴다.
 #
-# !! 아직 segmentation 라벨 데이터셋이 들어오지 않았다.
-#    폴더가 준비되면 아래 path 만 실제 경로로 바꾸면 된다.
-#    이미지는 detection 과 동일하고 labels 폴더의 내용(폴리곤 좌표)만 다르다.
+# 이미지는 detection 과 동일하고 labels 폴더의 내용(폴리곤 좌표)만 다르다.
+# 라벨은 SAM 으로 만든 표준 YOLO seg 포맷이라 yolov8n-seg 가 그대로 읽는다.
+# (Mask R-CNN 은 Preprocessing/convert_to_maskrcnn.py 로 마스크를 미리 만들어 쓴다)
 #
 # detection 라벨 : <클래스> <cx> <cy> <w> <h>
 # segment 라벨   : <클래스> <x1> <y1> <x2> <y2> ... (폴리곤 꼭짓점, 0~1 정규화)
 
-path: C:\Leacture\DL\sasac8_ilbin\Data\vest-helmet-seg
+path: C:\Leacture\DL\sasac8_ilbin\Data\vest-helmet_crop_dedup_seg
 train: train/images
 val: valid/images
 test: test/images

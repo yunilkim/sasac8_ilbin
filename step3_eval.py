@@ -22,6 +22,7 @@ from ultralytics import YOLO
 from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import evaluate_model, load_trained_model
 from step2_train import MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET
+from utils.run_info import print_settings
 from utils.table import save_table_csv
 
 # ---- 평가 설정 (가중치 경로는 config/run_config.py 에서 가져온다) ----
@@ -93,6 +94,15 @@ def print_scores(title, scores):
 
 def eval_one(key):
     """모델 하나(key)를 평가해서 지표 딕셔너리를 돌려준다."""
+    # 어떤 가중치를 어떤 데이터로 평가하는지 먼저 보여준다
+    print_settings(f'{MODEL_NAMES[key]} 평가', {
+        '가중치': WEIGHTS[key],
+        '데이터': DETECT_YAML if key == 'detect' else (
+            SEGMENT_YAML if key == 'segment' else SEGMENT_DATASET),
+        'split': SPLIT,
+        'imgsz': IMGSZ,
+    })
+
     if key == 'detect':
         return eval_model(DETECT_WEIGHTS, DETECT_YAML)
 

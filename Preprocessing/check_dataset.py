@@ -21,16 +21,20 @@ import os
 
 import yaml
 
+from Preprocessing.check_duplicate import check_duplicate
 from Preprocessing.check_format import check_format
 from Preprocessing.check_sync import check_sync
 from utils.visualize import draw_label_samples
 
 # ---- 검사할 데이터셋 경로 ----
-# detection : 지금 가지고 있는 데이터셋
-DETECT_DATASET = './Data/vest-helmet.v1i_roboflow'
+# detection : split 간 중복을 제거한 데이터셋
+DETECT_DATASET = './Data/vest-helmet_crop_dedup'
 
-# segmentation : 아직 라벨 데이터가 없다. 폴더가 들어오면 이 경로만 바꾸면 된다.
-SEGMENT_DATASET = './Data/vest-helmet-seg'
+# segmentation : 같은 이미지에 SAM 으로 폴리곤 라벨을 붙인 데이터셋
+SEGMENT_DATASET = './Data/vest-helmet_crop_dedup_seg'
+
+# 원본(중복 제거 전) : 중복 검사 비교용으로만 쓴다
+ORIGIN_DATASET = './Data/vest-helmet.v1i_roboflow_origin'
 
 SAVE_DIR = './result'
 
@@ -171,11 +175,30 @@ def check_segment_dataset(show=SHOW_SAMPLE):
                      show=show)
 
 
+def check_origin_duplicate():
+    """
+    원본(중복 제거 전) 데이터셋에 split 간 중복이 얼마나 있었는지 확인한다.
+
+    지금 쓰는 데이터셋은 이미 중복을 제거한 것이라 결과가 0 으로 나온다.
+    원본과 비교해 보면 '무엇이 제거됐는지'와 '파일명만 봐서는 왜 못 잡는지'를 알 수 있다.
+    이미지를 전부 읽어야 해서 몇 분 걸린다.
+    """
+    return check_duplicate(ORIGIN_DATASET,
+                           save_path=os.path.join(SAVE_DIR, 'duplicate_origin.csv'))
+
+
+def check_current_duplicate():
+    """지금 쓰는 데이터셋에 split 간 중복이 남아있지 않은지 확인한다."""
+    return check_duplicate(DETECT_DATASET,
+                           save_path=os.path.join(SAVE_DIR, 'duplicate_current.csv'))
+
+
 if __name__ == '__main__':
     check_detect_dataset()
 
     # segmentation 라벨 데이터셋이 준비되면 아래 주석을 푼다
     # check_segment_dataset()
 
-    # segmentation 라벨 데이터셋이 준비되면 아래 주석을 푼다
-    # check_segment_dataset()
+    # split 간 중복 검사 (이미지를 전부 읽어서 몇 분 걸린다)
+    # check_current_duplicate()   # 지금 쓰는 데이터셋에 중복이 남았는지
+    # check_origin_duplicate()    # 원본에 중복이 얼마나 있었는지 (비교용)

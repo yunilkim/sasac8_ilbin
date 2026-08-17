@@ -32,6 +32,12 @@ WEIGHTS = {
     'maskrcnn': './result/weights/mask_rcnn.pth',
 }
 
+# ---- 실행 전 확인 ----
+# 학습·평가·추론은 시작할 때 항상 설정을 화면에 보여준다. (비용이 없으니 늘 한다)
+# 아래를 True 로 바꾸면 만들어질 폴더명을 입력란에 띄우고 확인까지 받는다.
+# 백그라운드로 돌릴 때는 입력을 받을 수 없으므로 기본은 False 로 둔다.
+CONFIRM_RUN = True
+
 # ---- 여기를 고쳐서 실행할 모델을 정한다 ----
 # segmentation 라벨이 아직 없으므로 지금은 detection 만 실행한다.
 RUN_MODELS = ['detect']
