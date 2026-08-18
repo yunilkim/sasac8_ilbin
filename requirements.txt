@@ -1,15 +1,26 @@
-# 설치 : pip install -r requirements.txt
-# torch, torchvision 은 CUDA 버전에 맞춰 https://pytorch.org 에서 따로 설치하는 것을 권장
-# (ultralytics 를 설치하면 torch 도 같이 깔리지만 CPU 버전이 깔릴 수 있다)
+# 설치 순서
+#
+# 1) torch / torchvision 을 먼저 설치한다. (CUDA 버전에 맞춰서)
+#    https://pytorch.org 에서 자기 환경에 맞는 명령을 확인할 것
+#    예) pip install torch torchvision --index-url https://download.pytorch.org/whl/cu126
+#
+#    이 파일에 적어두지 않은 이유 : 여기 넣으면 CPU 빌드가 깔려
+#    이미 설치된 CUDA 빌드를 덮어쓸 수 있다.
+#
+# 2) 그 다음 나머지를 설치한다.
+#    pip install -r requirements.txt
 
-ultralytics      # YOLOv8 학습/평가/추론
-torch            # Mask R-CNN 학습
-torchvision      # Mask R-CNN 모델 제공
-torchmetrics     # Mask R-CNN 의 mAP 계산 (YOLO 와 같은 COCO 방식)
-pycocotools      # torchmetrics 의 mAP 계산에 필요
+ultralytics      # yolov8n / yolov8n-seg 학습·평가·추론
 tqdm             # 학습 진행바
-opencv-python    # 이미지 읽기, 그리기
-pillow           # 폴리곤을 마스크로 그릴 때 사용
+opencv-python    # 이미지 읽기, 마스크 그리기
+pillow           # 이미지 / 클래스 지도 읽기·쓰기
 numpy            # 마스크 배열 처리
 PyYAML           # config/*.yaml 읽기
 matplotlib       # 그래프 그리기
+
+# U-Net 은 torchvision 의 ResNet34 만 가져다 직접 구현했으므로 따로 설치할 것이 없다.
+
+# 아래 둘은 Mask R-CNN 을 쓸 때만 필요하다.
+# 지금 config/run_config.py 의 MODEL_KEYS 에는 Mask R-CNN 이 없어 설치하지 않아도 된다.
+# torchmetrics   # Mask R-CNN 의 mAP 계산 (YOLO 와 같은 COCO 방식)
+# pycocotools    # torchmetrics 가 mAP 를 계산할 때 쓰는 백엔드
