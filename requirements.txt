@@ -7,6 +7,15 @@
 #    이 파일에 적어두지 않은 이유 : 여기 넣으면 CPU 빌드가 깔려
 #    이미 설치된 CUDA 빌드를 덮어쓸 수 있다.
 #
+#    [GPU 세대 주의] CUDA 13 빌드는 Pascal 이하를 지원하지 않는다.
+#      GTX 10xx (Pascal)        -> cu126 이하를 설치해야 한다
+#      GTX 16xx / RTX 20xx 이상 -> 최신 빌드를 써도 된다
+#
+#    지원 여부 확인 :
+#      python -c "import torch; print(torch.cuda.get_arch_list())"
+#      목록에 자기 GPU 의 sm_XX 가 있어야 한다. (GTX 1080 = sm_61, GTX 1650 = sm_75)
+#      없으면 학습 중 "unable to find an engine to execute this computation" 이 난다.
+#
 # 2) 그 다음 나머지를 설치한다.
 #    pip install -r requirements.txt
 

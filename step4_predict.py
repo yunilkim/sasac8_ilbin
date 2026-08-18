@@ -17,7 +17,7 @@ import os
 
 from ultralytics import YOLO
 
-from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
+from config.run_config import CLASS_NAMES, MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import load_trained_model
 from models.mask_rcnn import predict_images as maskrcnn_predict
 from models.unet import load_trained_model as unet_load
@@ -34,9 +34,6 @@ DETECT_TEST_DIR = './Data/vest-helmet_crop_dedup/test/images'
 
 # segmentation 데이터셋 경로는 step2_train.py 한 곳에서만 관리한다
 SEGMENT_TEST_DIR = os.path.join(SEGMENT_DATASET, 'test', 'images')
-
-# Mask R-CNN 결과에 이름을 붙이기 위해 필요 (config/segment.yaml 의 names 와 순서가 같아야 한다)
-CLASS_NAMES = ['reflective_jacket', 'safety_helmet']
 
 CONF = 0.45         # 이 값보다 확신이 낮은 검출은 버린다
 IMGSZ = 640

@@ -17,6 +17,10 @@ step2_train, step3_eval, step4_predict 가 모두 이 파일의 RUN_MODELS 를 �
 # maskrcnn 은 코드는 남겨두었지만 지금은 쓰지 않는다. 쓰려면 아래 목록에 넣으면 된다.
 MODEL_KEYS = ['detect', 'segment', 'unet']
 
+# 클래스 이름 (config/detect.yaml, segment.yaml 의 names 와 순서까지 같아야 한다)
+# 학습 로그·추론 결과에 이름을 붙일 때 쓴다.
+CLASS_NAMES = ['reflective_jacket', 'safety_helmet']
+
 # 화면과 비교표에 보여줄 이름
 MODEL_NAMES = {
     'detect': 'yolov8n(detect)',

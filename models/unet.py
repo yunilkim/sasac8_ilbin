@@ -234,13 +234,16 @@ def validate_one_epoch(model, loader, criterion, device, num_classes):
     return total_loss / len(loader), miou, iou
 
 
-def save_epoch_log(log_path, rows):
-    """epoch 별 기록을 csv 로 남긴다."""
+def save_epoch_log(log_path, rows, num_classes):
+    """epoch 별 기록을 csv 로 남긴다. (클래스별 IoU 도 함께)"""
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
+    columns = ['epoch', 'train_loss', 'val_loss', 'val_mIoU']
+    columns += [f'IoU_class{c}' for c in range(1, num_classes + 1)]
+    columns += ['lr', 'best']
+
     with open(log_path, 'w', encoding='utf-8-sig', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=['epoch', 'train_loss', 'val_loss', 'val_mIoU',
-                                               'lr', 'best'])
+        writer = csv.DictWriter(f, fieldnames=columns)
         writer.writeheader()
         writer.writerows(rows)
 
@@ -248,7 +251,7 @@ def save_epoch_log(log_path, rows):
 def train_model(dataset_dir, num_classes, save_path,
                 epochs=30, batch_size=3, lr=0.001, patience=7,
                 input_size=INPUT_SIZE, run_dir=None, device=None,
-                use_class_weights=True):
+                use_class_weights=True, class_names=None):
     """
     U-Net 을 학습한다.
 
@@ -261,6 +264,10 @@ def train_model(dataset_dir, num_classes, save_path,
     """
     device = get_device(device)
     print(f'학습 장치 : {device}')
+
+    # 화면에 클래스별 IoU 를 보여줄 때 쓸 이름
+    if class_names is None:
+        class_names = [f'class{c}' for c in range(1, num_classes + 1)]
 
     train_loader = get_dataloader(dataset_dir, 'train', batch_size=batch_size,
                                   shuffle=True, augment=True, input_size=input_size)
@@ -321,21 +328,34 @@ def train_model(dataset_dir, num_classes, save_path,
         else:
             bad_count += 1
 
-        rows.append({
+        row = {
             'epoch': e,
             'train_loss': round(train_loss, 4),
             'val_loss': round(val_loss, 4) if val_loss is not None else '',
             'val_mIoU': round(miou, 4) if miou is not None else '',
             'lr': f'{now_lr:.6f}',
             'best': 'O' if is_best else '',
-        })
+        }
+
+        # 클래스별 IoU 도 남긴다.
+        # 헬멧은 전체 픽셀의 3% 뿐이라, 평균(mIoU)만 보면 헬멧을 못 잡고 있어도 눈치채기 어렵다.
+        for c in range(1, num_classes + 1):
+            row[f'IoU_class{c}'] = round(float(iou[c]), 4) if iou is not None else ''
+
+        rows.append(row)
 
         text = f'[EPOCH {e}/{epochs}] train {train_loss:.4f}'
+
         if val_loss is not None:
-            text += f'  val {val_loss:.4f}  mIoU {miou:.4f}'
+            per_class = ' / '.join(f'{class_names[c - 1]} {iou[c]:.3f}'
+                                   for c in range(1, num_classes + 1))
+            text += f'  val {val_loss:.4f}  mIoU {miou:.4f} ({per_class})'
+
         text += f'  lr {now_lr:.6f}'
+
         if is_best:
             text += '  <- best'
+
         print(text)
 
         if use_valid and bad_count >= patience:
@@ -346,7 +366,7 @@ def train_model(dataset_dir, num_classes, save_path,
     log_path = os.path.join(run_dir, 'results.csv') if run_dir else None
 
     if log_path:
-        save_epoch_log(log_path, rows)
+        save_epoch_log(log_path, rows, num_classes)
         print(f'epoch 기록 저장 : {log_path}')
 
     print(f'가장 좋았던 epoch {best_epoch} (mIoU {best_score:.4f}) 의 가중치를 저장했습니다 : {save_path}')

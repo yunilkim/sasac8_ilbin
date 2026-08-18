@@ -27,7 +27,7 @@ from datetime import datetime
 
 from ultralytics import YOLO
 
-from config.run_config import CONFIRM_RUN, MODEL_NAMES, RUN_MODELS, WEIGHTS
+from config.run_config import CLASS_NAMES, CONFIRM_RUN, MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import INPUT_SIZE, make_run_dir, train_model
 from models.unet import INPUT_SIZE as UNET_INPUT_SIZE
 from models.unet import train_model as unet_train
@@ -333,7 +333,8 @@ def train_unet():
                         lr=UNET_LR,
                         patience=UNET_PATIENCE,
                         input_size=UNET_INPUT_SIZE,
-                        run_dir=run_dir)
+                        run_dir=run_dir,
+                        class_names=CLASS_NAMES)
 
     minutes = (time.time() - start) / 60
 
