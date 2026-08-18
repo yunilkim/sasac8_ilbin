@@ -91,7 +91,7 @@ def eval_unet(weights=UNET_PATH, dataset_dir=SEGMENT_DATASET, split=SPLIT):
     """
     U-Net 을 평가한다.
 
-    박스가 없어 mAP 를 낼 수 없으므로 픽셀 기준 지표(mIoU, Dice, 픽셀정확도)를 쓴다.
+    박스가 없어 mAP 를 낼 수 없으므로 픽셀 기준 지표(mIoU, Dice, 정확도)를 쓴다.
     yolov8n-seg 와는 이 픽셀 지표로 비교한다. (step5_compare 참고)
     """
     model = unet_load(weights, NUM_CLASSES)

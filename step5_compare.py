@@ -32,7 +32,7 @@ from step3_eval import (DETECT_WEIGHTS, DETECT_YAML, SEGMENT_WEIGHTS, SEGMENT_YA
                         SPLIT, eval_maskrcnn, eval_model, eval_unet)
 from utils.metrics import mean_iou
 from utils.table import print_table, save_table_csv
-from utils.visualize import draw_compare_plot
+from utils.visualize import BOX_PLOT_KEYS, PIXEL_PLOT_KEYS, draw_compare_plot
 
 # 각 모델의 테스트 이미지 폴더
 DETECT_TEST_DIR = './Data/vest-helmet.v1i_roboflow/test/images'
@@ -41,6 +41,8 @@ DETECT_TEST_DIR = './Data/vest-helmet.v1i_roboflow/test/images'
 SEGMENT_TEST_DIR = os.path.join(SEGMENT_DATASET, 'test', 'images')
 
 SAVE_CSV = './result/compare.csv'
+SAVE_BOX_PLOT = './result/compare_box.jpg'
+SAVE_PIXEL_PLOT = './result/compare_pixel.jpg'
 
 
 def get_model_size(weights):
@@ -58,7 +60,8 @@ def collect_yolo_scores(key, weights, data_yaml, test_dir):
 
     # 2) 평균 IoU (예측 박스와 정답 박스의 겹침 정도)
     model = YOLO(weights)
-    scores['mIoU'] = mean_iou(model, test_dir)
+    # 박스끼리 겹친 정도. U-Net 의 pixel_mIoU 와 헷갈리지 않도록 이름을 구분한다.
+    scores['box_mIoU'] = mean_iou(model, test_dir)
 
     # 3) 학습 시간(분)과 모델 크기(MB)  ※ 학습 시간은 result/train_log.csv 에서 읽는다
     scores['학습시간(분)'] = read_train_time(key)
@@ -95,6 +98,8 @@ def yolo_pixel_scores(weights, dataset_dir, num_classes, split='test', conf=0.45
     yolov8n-seg 는 객체마다 마스크를 주고 U-Net 은 지도 한 장을 준다.
     그대로는 비교할 수 없으므로, 객체 마스크들을 한 장으로 합쳐서 맞춰 준다.
     (면적이 큰 것부터 그려 작은 객체가 살아남게 한다 - 정답을 만들 때와 같은 규칙)
+
+    U-Net 의 evaluate_model 과 같은 항목(pixel_mIoU, pixel_Dice, pixel_accuracy)을 낸다.
     """
     import cv2
     from PIL import Image
@@ -110,6 +115,11 @@ def yolo_pixel_scores(weights, dataset_dir, num_classes, split='test', conf=0.45
 
     inter = np.zeros(num_classes + 1)
     union = np.zeros(num_classes + 1)
+    pred_sum = np.zeros(num_classes + 1)
+    true_sum = np.zeros(num_classes + 1)
+
+    correct = 0
+    total = 0
 
     files = [f for f in sorted(os.listdir(semantic_dir)) if f.endswith('.png')]
 
@@ -137,15 +147,32 @@ def yolo_pixel_scores(weights, dataset_dir, num_classes, split='test', conf=0.45
                                interpolation=cv2.INTER_NEAREST) > 0.5
                 predict[m] = classes[i] + 1
 
+        correct += float((predict == truth).sum())
+        total += truth.size
+
         for c in range(num_classes + 1):
             p = predict == c
             t = truth == c
             inter[c] += float((p & t).sum())
             union[c] += float((p | t).sum())
+            pred_sum[c] += float(p.sum())
+            true_sum[c] += float(t.sum())
 
     iou = np.where(union > 0, inter / np.maximum(union, 1), np.nan)
+    dice = np.where(pred_sum + true_sum > 0,
+                    2 * inter / np.maximum(pred_sum + true_sum, 1), np.nan)
 
-    return {'pixel_mIoU': float(np.nanmean(iou[1:]))}
+    scores = {
+        'pixel_mIoU': float(np.nanmean(iou[1:])),
+        'pixel_Dice': float(np.nanmean(dice[1:])),
+        'pixel_accuracy': correct / total if total else 0.0,
+    }
+
+    # 클래스별 IoU 도 U-Net 과 같은 이름으로 넣어 나란히 볼 수 있게 한다
+    for c in range(1, num_classes + 1):
+        scores[f'IoU_class{c}'] = float(iou[c])
+
+    return scores
 
 
 def find_missing_models():
@@ -202,14 +229,36 @@ def compare_models():
     save_table_csv(scores, SAVE_CSV)
 
     # 지표 성격이 달라 어떤 칸이 왜 비는지 알려준다
-    print('  * mAP 계열   : 박스를 내는 모델만 (yolov8n, yolov8n-seg)')
-    print('  * pixel 계열 : 픽셀 지도로 비교 가능한 모델만 (yolov8n-seg, U-Net)')
+    print('  * mAP / box_mIoU : 박스를 내는 모델만 (yolov8n, yolov8n-seg)')
+    print('  * pixel 계열     : 픽셀 지도로 비교 가능한 모델만 (yolov8n-seg, U-Net)')
     print('  -> yolov8n-seg 가 양쪽에 모두 있어 두 축을 이어주는 기준이 된다')
 
-    # 0~1 지표만 막대그래프로 그린다
-    draw_compare_plot(scores)
+    draw_split_plots(scores)
 
     return scores
+
+
+def draw_split_plots(scores):
+    """
+    지표 성격이 달라 그래프를 두 장으로 나눠 그린다.
+      compare_box.jpg   : 박스로 찾는 모델끼리
+      compare_pixel.jpg : 픽셀로 칠하는 모델끼리
+    한 장에 다 넣으면 서로 없는 칸이 많아 비교가 되지 않는다.
+    """
+    box_models = {name: s for name, s in scores.items() if 'mAP50' in s}
+    pixel_models = {name: s for name, s in scores.items() if 'pixel_mIoU' in s}
+
+    if len(box_models) >= 2:
+        draw_compare_plot(box_models, SAVE_BOX_PLOT,
+                          plot_keys=BOX_PLOT_KEYS, title='box metrics')
+    else:
+        print(f'  박스 지표를 가진 모델이 {len(box_models)}개라 그래프를 그리지 않는다')
+
+    if len(pixel_models) >= 2:
+        draw_compare_plot(pixel_models, SAVE_PIXEL_PLOT,
+                          plot_keys=PIXEL_PLOT_KEYS, title='pixel metrics')
+    else:
+        print(f'  픽셀 지표를 가진 모델이 {len(pixel_models)}개라 그래프를 그리지 않는다')
 
 
 if __name__ == '__main__':

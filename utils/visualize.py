@@ -162,27 +162,40 @@ def draw_label_samples(dataset_dir, task, save_path, class_names=None,
 
 
 # 그래프로 그릴 지표 (0~1 사이 값만. 속도나 용량은 단위가 달라서 표로만 본다)
-PLOT_KEYS = ['mAP50', 'mAP50-95', 'Precision', 'Recall', 'F1', 'mIoU']
+#
+# 지표가 두 갈래라 목록도 둘로 나눈다.
+#   박스 기준  : 객체를 박스로 찾는 모델끼리 비교 (yolov8n, yolov8n-seg)
+#   픽셀 기준  : 픽셀에 색을 칠하는 모델끼리 비교 (yolov8n-seg, U-Net)
+# yolov8n-seg 는 양쪽에 모두 들어가 두 갈래를 이어준다.
+BOX_PLOT_KEYS = ['mAP50', 'mAP50-95', 'Precision', 'Recall', 'F1', 'box_mIoU']
+PIXEL_PLOT_KEYS = ['pixel_mIoU', 'pixel_Dice', 'pixel_accuracy']
+
+# 인자를 주지 않으면 박스 기준으로 그린다
+PLOT_KEYS = BOX_PLOT_KEYS
 
 
-def draw_compare_plot(scores, save_path='./result/compare.jpg'):
+def draw_compare_plot(scores, save_path='./result/compare.jpg',
+                      plot_keys=None, title='model comparison'):
     """
     여러 모델의 지표를 나란히 막대그래프로 그린다.
 
     scores 예시
-      {'yolov8n(detect)': {'mAP50': 0.80, 'mIoU': 0.70, ...},
-       'yolov8n-seg':     {'mAP50': 0.85, 'mIoU': 0.75, ...},
-       'maskrcnn':        {'mAP50': 0.88, 'mIoU': 0.78, ...}}
+      {'yolov8n(detect)': {'mAP50': 0.80, 'box_mIoU': 0.70, ...},
+       'yolov8n-seg':     {'mAP50': 0.85, 'box_mIoU': 0.75, ...}}
+
+    plot_keys : 그릴 지표 목록 (BOX_PLOT_KEYS / PIXEL_PLOT_KEYS)
     """
+    if plot_keys is None:
+        plot_keys = PLOT_KEYS
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
 
     model_names = list(scores.keys())
 
     # 모든 모델이 공통으로 가지고 있는 지표만 그린다
-    keys = [k for k in PLOT_KEYS if all(k in scores[name] for name in model_names)]
+    keys = [k for k in plot_keys if all(k in scores[name] for name in model_names)]
 
     if not keys:
-        print('그릴 수 있는 공통 지표가 없습니다.')
+        print(f'그릴 수 있는 공통 지표가 없습니다 : {save_path}')
         return
 
     x = range(len(keys))
@@ -199,7 +212,7 @@ def draw_compare_plot(scores, save_path='./result/compare.jpg'):
 
     plt.xticks(list(x), keys)
     plt.ylim(0, 1.0)
-    plt.title('model comparison')
+    plt.title(title)
     plt.legend()
     plt.tight_layout()
     plt.savefig(save_path, dpi=200)

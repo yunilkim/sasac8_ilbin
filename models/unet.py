@@ -386,7 +386,7 @@ def evaluate_model(model, dataset_dir, num_classes, split='test',
 
       IoU        : 클래스마다 겹친 정도. mIoU 는 배경을 뺀 평균
       Dice       : 2 x 겹침 / (예측 + 정답). IoU 와 비슷하지만 겹침을 더 후하게 본다
-      픽셀정확도 : 전체 픽셀 중 맞힌 비율
+      pixel_accuracy : 전체 픽셀 중 맞힌 비율 (그래프 라벨이 깨지지 않게 영문 키를 쓴다)
       추론시간   : 이미지 한 장 처리 시간
     """
     import time
@@ -438,7 +438,7 @@ def evaluate_model(model, dataset_dir, num_classes, split='test',
     scores = {
         'pixel_mIoU': float(np.nanmean(iou[1:])),
         'pixel_Dice': float(np.nanmean(dice[1:])),
-        '픽셀정확도': correct / total if total else 0.0,
+        'pixel_accuracy': correct / total if total else 0.0,
         '추론시간(ms)': infer_ms,
         'FPS': 1000 / infer_ms if infer_ms > 0 else 0.0,
     }
