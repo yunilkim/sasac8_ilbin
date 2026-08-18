@@ -288,7 +288,10 @@ def train_model(dataset_dir, num_classes, save_path,
     # yolov8n-seg / Mask R-CNN 과 같은 방식으로 학습률을 매끄럽게 줄인다
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
-    best_score = -1.0
+    # 어떤 값이 나와도 첫 epoch 은 best 가 되도록 -무한대에서 시작한다.
+    # (valid 가 없을 때 score 가 -train_loss 라서 -1.0 으로 두면 loss 가 1 을 넘는 경우
+    #  첫 epoch 이 best 로 잡히지 않아 가중치가 저장되지 않는다)
+    best_score = float('-inf')
     best_epoch = 0
     bad_count = 0
     rows = []

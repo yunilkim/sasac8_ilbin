@@ -44,7 +44,7 @@ WEIGHTS = {
 CONFIRM_RUN = True
 
 # ---- 여기를 고쳐서 실행할 모델을 정한다 ----
-RUN_MODELS = ['segment', 'unet']
+RUN_MODELS = ['unet']
 
 # 세 모델을 한 번에 돌릴 때는 위 줄을 지우고 아래 줄의 주석을 푼다
 # RUN_MODELS = ['detect', 'segment', 'unet']

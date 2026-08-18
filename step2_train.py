@@ -43,6 +43,7 @@ NUM_CLASSES = 2          # 배경을 뺀 클래스 수
 
 # ---- YOLO 학습 설정 ----
 EPOCHS = 100             # 최대 학습 횟수
+# EPOCHS = 1               # test epochs
 IMGSZ = 640              # 입력 이미지 크기
 BATCH = 16               # 한 번에 학습할 이미지 수 (GPU 메모리 부족하면 8로 줄이기)
 DEVICE = 0               # 0 -> GPU, 'cpu' -> CPU
@@ -57,7 +58,8 @@ SEGMENT_NAME = 'vest_helmet_seg'
 # ---- Mask R-CNN 학습 설정 ----
 # ResNet50 기반이라 yolov8n 보다 훨씬 무겁다. (실측 1 epoch 약 21분)
 # 사전학습(COCO) 모델을 우리 클래스에 맞추는 것이라 30 epoch 이면 수렴한다.
-MASKRCNN_EPOCHS = 30
+# MASKRCNN_EPOCHS = 30
+MASKRCNN_EPOCHS = 1 # test epochs
 
 # batch 4 + lr 0.005 = 이미지당 0.00125 로, torchvision 표준 레시피(batch 16 / lr 0.02)와 같다.
 # 4GB GPU 에서 2.0GB 를 쓰므로 여유가 있다. (batch 를 더 키워도 속도는 거의 그대로다)
@@ -77,6 +79,7 @@ MASKRCNN_PATH = WEIGHTS['maskrcnn']
 # ResNet34 인코더(ImageNet 사전학습)를 쓰는 시맨틱 분할 모델.
 # 검출용 부속(RPN, ROI Head)이 없어 Mask R-CNN 보다 가볍다.
 UNET_EPOCHS = 30
+# UNET_EPOCHS = 1     # test epochs
 
 # 4GB GPU 에서 2.65GB 를 쓴다. (batch 4 는 3.45GB 로 아슬아슬하고 속도는 같다)
 UNET_BATCH = 3
