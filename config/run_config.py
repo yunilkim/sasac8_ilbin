@@ -12,12 +12,16 @@ step2_train, step3_eval, step4_predict 가 모두 이 파일의 RUN_MODELS 를 �
 """
 
 # 이 프로젝트에서 쓰는 모델 구분값 (순서 = 비교표에 나오는 순서)
-MODEL_KEYS = ['detect', 'segment', 'maskrcnn']
+#   detection    : yolov8n
+#   segmentation : yolov8n-seg (인스턴스) / U-Net (시맨틱)
+# maskrcnn 은 코드는 남겨두었지만 지금은 쓰지 않는다. 쓰려면 아래 목록에 넣으면 된다.
+MODEL_KEYS = ['detect', 'segment', 'unet']
 
 # 화면과 비교표에 보여줄 이름
 MODEL_NAMES = {
     'detect': 'yolov8n(detect)',
     'segment': 'yolov8n-seg',
+    'unet': 'U-Net',
     'maskrcnn': 'maskrcnn',
 }
 
@@ -29,6 +33,7 @@ MODEL_NAMES = {
 WEIGHTS = {
     'detect': './result/weights/detect_best.pt',
     'segment': './result/weights/segment_best.pt',
+    'unet': './result/weights/unet_best.pth',
     'maskrcnn': './result/weights/mask_rcnn.pth',
 }
 
@@ -39,8 +44,7 @@ WEIGHTS = {
 CONFIRM_RUN = True
 
 # ---- 여기를 고쳐서 실행할 모델을 정한다 ----
-# segmentation 라벨이 아직 없으므로 지금은 detection 만 실행한다.
-RUN_MODELS = ['detect']
+RUN_MODELS = ['segment', 'unet']
 
 # 세 모델을 한 번에 돌릴 때는 위 줄을 지우고 아래 줄의 주석을 푼다
-# RUN_MODELS = ['detect', 'segment', 'maskrcnn']
+# RUN_MODELS = ['detect', 'segment', 'unet']

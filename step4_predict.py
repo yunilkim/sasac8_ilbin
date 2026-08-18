@@ -20,14 +20,17 @@ from ultralytics import YOLO
 from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import load_trained_model
 from models.mask_rcnn import predict_images as maskrcnn_predict
-from step2_train import MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET
+from models.unet import load_trained_model as unet_load
+from models.unet import predict_images as unet_predict
+from step2_train import (MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET, UNET_INPUT_SIZE,
+                         UNET_PATH)
 from utils.run_info import print_settings
 
 # ---- 추론 설정 (가중치 경로는 config/run_config.py 에서 가져온다) ----
 DETECT_WEIGHTS = WEIGHTS['detect']
 SEGMENT_WEIGHTS = WEIGHTS['segment']
 
-DETECT_TEST_DIR = './Data/vest-helmet.v1i_roboflow/test/images'
+DETECT_TEST_DIR = './Data/vest-helmet_crop_dedup/test/images'
 
 # segmentation 데이터셋 경로는 step2_train.py 한 곳에서만 관리한다
 SEGMENT_TEST_DIR = os.path.join(SEGMENT_DATASET, 'test', 'images')
@@ -89,6 +92,16 @@ def predict_maskrcnn(source=SEGMENT_TEST_DIR, save_name='predict_maskrcnn'):
     maskrcnn_predict(model, source, os.path.join(SAVE_DIR, save_name), CLASS_NAMES)
 
 
+def predict_unet(source=SEGMENT_TEST_DIR, save_name='predict_unet'):
+    """
+    U-Net 으로 이미지 폴더를 추론하고 결과를 저장한다.
+    박스가 없으므로 클래스별로 색을 칠한 그림만 나온다.
+    """
+    model = unet_load(UNET_PATH, NUM_CLASSES)
+    unet_predict(model, source, os.path.join(SAVE_DIR, save_name), CLASS_NAMES,
+                 input_size=UNET_INPUT_SIZE)
+
+
 def predict_one(key):
     """모델 하나(key)로 테스트 이미지를 추론한다."""
     source = DETECT_TEST_DIR if key == 'detect' else SEGMENT_TEST_DIR
@@ -106,6 +119,9 @@ def predict_one(key):
 
     if key == 'segment':
         return predict_images(SEGMENT_WEIGHTS, SEGMENT_TEST_DIR, save_name='predict_seg')
+
+    if key == 'unet':
+        return predict_unet()
 
     return predict_maskrcnn()
 

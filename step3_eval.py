@@ -21,7 +21,10 @@ from ultralytics import YOLO
 
 from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import evaluate_model, load_trained_model
-from step2_train import MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET
+from models.unet import evaluate_model as unet_evaluate
+from models.unet import load_trained_model as unet_load
+from step2_train import (MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET, UNET_INPUT_SIZE,
+                         UNET_PATH)
 from utils.run_info import print_settings
 from utils.table import save_table_csv
 
@@ -84,6 +87,20 @@ def eval_maskrcnn(weights=MASKRCNN_PATH, dataset_dir=SEGMENT_DATASET, split=SPLI
     return scores
 
 
+def eval_unet(weights=UNET_PATH, dataset_dir=SEGMENT_DATASET, split=SPLIT):
+    """
+    U-Net 을 평가한다.
+
+    박스가 없어 mAP 를 낼 수 없으므로 픽셀 기준 지표(mIoU, Dice, 픽셀정확도)를 쓴다.
+    yolov8n-seg 와는 이 픽셀 지표로 비교한다. (step5_compare 참고)
+    """
+    model = unet_load(weights, NUM_CLASSES)
+    scores = unet_evaluate(model, dataset_dir, NUM_CLASSES,
+                           split=split, input_size=UNET_INPUT_SIZE)
+
+    return scores
+
+
 def print_scores(title, scores):
     """지표 딕셔너리를 보기 좋게 출력한다."""
     print(f'--- {title} ---')
@@ -101,6 +118,7 @@ def eval_one(key):
             SEGMENT_YAML if key == 'segment' else SEGMENT_DATASET),
         'split': SPLIT,
         'imgsz': IMGSZ,
+        '지표': '픽셀 기준 (mIoU/Dice)' if key == 'unet' else '박스 기준 (mAP)',
     })
 
     if key == 'detect':
@@ -108,6 +126,9 @@ def eval_one(key):
 
     if key == 'segment':
         return eval_model(SEGMENT_WEIGHTS, SEGMENT_YAML)
+
+    if key == 'unet':
+        return eval_unet()
 
     return eval_maskrcnn()
 

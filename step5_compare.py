@@ -21,12 +21,15 @@
 
 import os
 
+import numpy as np
+from tqdm import tqdm
 from ultralytics import YOLO
 
 from config.run_config import MODEL_KEYS, MODEL_NAMES, WEIGHTS
-from step2_train import MASKRCNN_PATH, SEGMENT_DATASET, read_train_time
-from step3_eval import (DETECT_WEIGHTS, DETECT_YAML, SEGMENT_WEIGHTS,
-                        SEGMENT_YAML, eval_maskrcnn, eval_model)
+from step2_train import (MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET, UNET_PATH,
+                         read_train_time)
+from step3_eval import (DETECT_WEIGHTS, DETECT_YAML, SEGMENT_WEIGHTS, SEGMENT_YAML,
+                        SPLIT, eval_maskrcnn, eval_model, eval_unet)
 from utils.metrics import mean_iou
 from utils.table import print_table, save_table_csv
 from utils.visualize import draw_compare_plot
@@ -75,6 +78,76 @@ def collect_maskrcnn_scores():
     return scores
 
 
+def collect_unet_scores():
+    """U-Net 의 비교 항목을 모아 딕셔너리로 돌려준다. (픽셀 기준 지표)"""
+    scores = eval_unet()
+
+    scores['학습시간(분)'] = read_train_time('unet')
+    scores['모델크기(MB)'] = get_model_size(UNET_PATH)
+
+    return scores
+
+
+def yolo_pixel_scores(weights, dataset_dir, num_classes, split='test', conf=0.45):
+    """
+    yolov8n-seg 의 예측을 '픽셀 지도' 로 눌러서 U-Net 과 같은 기준으로 지표를 낸다.
+
+    yolov8n-seg 는 객체마다 마스크를 주고 U-Net 은 지도 한 장을 준다.
+    그대로는 비교할 수 없으므로, 객체 마스크들을 한 장으로 합쳐서 맞춰 준다.
+    (면적이 큰 것부터 그려 작은 객체가 살아남게 한다 - 정답을 만들 때와 같은 규칙)
+    """
+    import cv2
+    from PIL import Image
+
+    model = YOLO(weights)
+
+    image_dir = os.path.join(dataset_dir, split, 'images')
+    semantic_dir = os.path.join(dataset_dir, split, 'semantic')
+
+    if not os.path.isdir(semantic_dir):
+        print('[안내] 정답 지도(semantic)가 없어 픽셀 지표를 건너뜁니다.')
+        return {}
+
+    inter = np.zeros(num_classes + 1)
+    union = np.zeros(num_classes + 1)
+
+    files = [f for f in sorted(os.listdir(semantic_dir)) if f.endswith('.png')]
+
+    for file_name in tqdm(files, desc='픽셀 지표'):
+        name = os.path.splitext(file_name)[0]
+
+        image_path = os.path.join(image_dir, name + '.jpg')
+        if not os.path.exists(image_path):
+            continue
+
+        truth = np.array(Image.open(os.path.join(semantic_dir, file_name)))
+        predict = np.zeros_like(truth)
+
+        result = model.predict(image_path, conf=conf, verbose=False)[0]
+
+        if result.masks is not None:
+            masks = result.masks.data.cpu().numpy()
+            classes = result.boxes.cls.cpu().numpy().astype(int)
+
+            # 면적이 큰 것부터 그린다
+            areas = masks.reshape(len(masks), -1).sum(axis=1)
+
+            for i in np.argsort(-areas):
+                m = cv2.resize(masks[i], (truth.shape[1], truth.shape[0]),
+                               interpolation=cv2.INTER_NEAREST) > 0.5
+                predict[m] = classes[i] + 1
+
+        for c in range(num_classes + 1):
+            p = predict == c
+            t = truth == c
+            inter[c] += float((p & t).sum())
+            union[c] += float((p | t).sum())
+
+    iou = np.where(union > 0, inter / np.maximum(union, 1), np.nan)
+
+    return {'pixel_mIoU': float(np.nanmean(iou[1:]))}
+
+
 def find_missing_models():
     """
     세 모델 중 아직 학습되지 않은(가중치 파일이 없는) 모델 목록을 돌려준다.
@@ -89,7 +162,15 @@ def collect_scores(key):
         return collect_yolo_scores(key, DETECT_WEIGHTS, DETECT_YAML, DETECT_TEST_DIR)
 
     if key == 'segment':
-        return collect_yolo_scores(key, SEGMENT_WEIGHTS, SEGMENT_YAML, SEGMENT_TEST_DIR)
+        scores = collect_yolo_scores(key, SEGMENT_WEIGHTS, SEGMENT_YAML, SEGMENT_TEST_DIR)
+
+        # U-Net 과 나란히 놓으려면 픽셀 기준 지표도 필요하다
+        scores.update(yolo_pixel_scores(SEGMENT_WEIGHTS, SEGMENT_DATASET,
+                                        NUM_CLASSES, split=SPLIT))
+        return scores
+
+    if key == 'unet':
+        return collect_unet_scores()
 
     return collect_maskrcnn_scores()
 
@@ -119,6 +200,11 @@ def compare_models():
 
     print_table(scores)
     save_table_csv(scores, SAVE_CSV)
+
+    # 지표 성격이 달라 어떤 칸이 왜 비는지 알려준다
+    print('  * mAP 계열   : 박스를 내는 모델만 (yolov8n, yolov8n-seg)')
+    print('  * pixel 계열 : 픽셀 지도로 비교 가능한 모델만 (yolov8n-seg, U-Net)')
+    print('  -> yolov8n-seg 가 양쪽에 모두 있어 두 축을 이어주는 기준이 된다')
 
     # 0~1 지표만 막대그래프로 그린다
     draw_compare_plot(scores)

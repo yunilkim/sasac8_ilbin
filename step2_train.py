@@ -29,6 +29,8 @@ from ultralytics import YOLO
 
 from config.run_config import CONFIRM_RUN, MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import INPUT_SIZE, make_run_dir, train_model
+from models.unet import INPUT_SIZE as UNET_INPUT_SIZE
+from models.unet import train_model as unet_train
 from utils.run_info import confirm_run
 
 # ---- 공통 설정 ----
@@ -36,7 +38,7 @@ DETECT_YAML = './config/detect.yaml'
 SEGMENT_YAML = './config/segment.yaml'
 
 # Mask R-CNN 은 yaml 이 아니라 폴더 경로를 직접 쓴다 (segmentation 데이터가 들어오면 수정)
-SEGMENT_DATASET = './Data/vest-helmet-seg'
+SEGMENT_DATASET = './Data/vest-helmet_crop_dedup_seg'
 NUM_CLASSES = 2          # 배경을 뺀 클래스 수
 
 # ---- YOLO 학습 설정 ----
@@ -70,6 +72,18 @@ MASKRCNN_PATIENCE = 7
 
 # 가중치 저장 위치는 config/run_config.py 한 곳에서 관리한다
 MASKRCNN_PATH = WEIGHTS['maskrcnn']
+
+# ---- U-Net 학습 설정 ----
+# ResNet34 인코더(ImageNet 사전학습)를 쓰는 시맨틱 분할 모델.
+# 검출용 부속(RPN, ROI Head)이 없어 Mask R-CNN 보다 가볍다.
+UNET_EPOCHS = 30
+
+# 4GB GPU 에서 2.65GB 를 쓴다. (batch 4 는 3.45GB 로 아슬아슬하고 속도는 같다)
+UNET_BATCH = 3
+UNET_LR = 0.001          # Adam 을 쓰므로 SGD 보다 작은 값을 쓴다
+UNET_PATIENCE = 7
+UNET_NAME = 'vest_helmet_unet'
+UNET_PATH = WEIGHTS['unet']
 
 # ---- 실험 이력 ----
 TRAIN_LOG = './result/train_log.csv'
@@ -273,10 +287,64 @@ def train_maskrcnn():
     print(f'Mask R-CNN 학습 완료 -> {MASKRCNN_PATH}')
 
 
+def train_unet():
+    """
+    segmentation 라벨(클래스 지도)로 U-Net 을 학습한다.
+
+    yolov8n-seg 와 달리 픽셀마다 클래스를 맞히는 모델이라 박스가 나오지 않는다.
+    좋고 나쁨은 mIoU 로 판단하고, 가장 좋았던 epoch 의 가중치를 저장한다.
+    epoch 별 기록은 runs/unet/<이름>/results.csv 에 남는다.
+    """
+    settings = {
+        '모델': 'U-Net (ResNet34 인코더, ImageNet 사전학습)',
+        '데이터': f'{SEGMENT_DATASET} (semantic 폴더)',
+        'epochs': UNET_EPOCHS,
+        'patience': UNET_PATIENCE,
+        'imgsz': f'{UNET_INPUT_SIZE} (YOLO 와 동일)',
+        'batch': UNET_BATCH,
+        'lr': f'{UNET_LR} (Adam)',
+        '학습률 스케줄': 'CosineAnnealing (0 까지 매끄럽게 감소)',
+        '증강': '좌우반전 + 색상변화 (train 만)',
+        '클래스 가중치': '사용 (배경 83% / 헬멧 3% 불균형 보정)',
+        '판단 기준': 'mIoU (높을수록 좋음)',
+        '가중치 저장': UNET_PATH,
+    }
+
+    ok, run_name = confirm_run('U-Net 학습', settings,
+                               run_name=UNET_NAME, confirm=CONFIRM_RUN)
+
+    if not ok:
+        print('학습을 취소했습니다.')
+        return
+
+    run_dir = make_run_dir('./runs/unet', run_name)
+    print(f'학습 결과 폴더 : {run_dir}')
+
+    start = time.time()
+
+    result = unet_train(dataset_dir=SEGMENT_DATASET,
+                        num_classes=NUM_CLASSES,
+                        save_path=UNET_PATH,
+                        epochs=UNET_EPOCHS,
+                        batch_size=UNET_BATCH,
+                        lr=UNET_LR,
+                        patience=UNET_PATIENCE,
+                        input_size=UNET_INPUT_SIZE,
+                        run_dir=run_dir)
+
+    minutes = (time.time() - start) / 60
+
+    # mAP 대신 mIoU 를 기록한다 (박스가 없어 mAP 를 낼 수 없다)
+    save_train_log('unet', run_dir, result['epochs_ran'], UNET_PATIENCE, minutes,
+                   round(result['best_score'], 4))
+    print(f'U-Net 학습 완료 -> {UNET_PATH}')
+
+
 # 모델 구분값과 학습 함수를 짝지어 둔다 (train_all 이 이걸 보고 골라 실행한다)
 TRAIN_FUNCS = {
     'detect': train_detect,
     'segment': train_segment,
+    'unet': train_unet,
     'maskrcnn': train_maskrcnn,
 }
 
