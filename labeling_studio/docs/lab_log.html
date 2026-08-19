@@ -1,0 +1,2381 @@
+﻿<title>Vest-Helmet 라벨링 실험 기록</title>
+<style>
+:root{
+  --ground:#F6F8FA; --surface:#FFFFFF; --surface-2:#EDF1F5;
+  --ink:#141A21; --ink-2:#3D4A57; --ink-3:#6B7885;
+  --rule:#DCE3EA; --rule-2:#C3CDD7;
+  --ok:#0F6E68; --ok-bg:#E2F1EF;
+  --warn:#9C5C0C; --warn-bg:#F7EDDD;
+  --fail:#A02C38; --fail-bg:#F8E5E7;
+  --note:#3A5A8C; --note-bg:#E6EDF7;
+  --mono:ui-monospace,"Cascadia Mono","Cascadia Code",Consolas,"SF Mono",Menlo,monospace;
+  --sans:"Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+  --disp:"Segoe UI Variable Display","Segoe UI",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0E1319; --surface:#151C24; --surface-2:#1D262F;
+    --ink:#E6EBF1; --ink-2:#B3BEC9; --ink-3:#7C8896;
+    --rule:#28323D; --rule-2:#3A4652;
+    --ok:#54C8BC; --ok-bg:#123029;
+    --warn:#DDA24F; --warn-bg:#332617;
+    --fail:#E5737E; --fail-bg:#361A1E;
+    --note:#7FA8E0; --note-bg:#16243A;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0E1319; --surface:#151C24; --surface-2:#1D262F;
+  --ink:#E6EBF1; --ink-2:#B3BEC9; --ink-3:#7C8896;
+  --rule:#28323D; --rule-2:#3A4652;
+  --ok:#54C8BC; --ok-bg:#123029;
+  --warn:#DDA24F; --warn-bg:#332617;
+  --fail:#E5737E; --fail-bg:#361A1E;
+  --note:#7FA8E0; --note-bg:#16243A;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:var(--sans); font-size:16px; line-height:1.65;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1040px; margin:0 auto; padding:0 28px 96px}
+h1,h2,h3,h4{font-family:var(--disp); text-wrap:balance; margin:0}
+p{margin:0}
+a{color:var(--ok)}
+code{font-family:var(--mono); font-size:.88em; background:var(--surface-2);
+  padding:.12em .38em; border-radius:3px; color:var(--ink-2)}
+
+/* ── masthead ─────────────────────────────── */
+.mast{padding:64px 0 30px; border-bottom:2px solid var(--ink)}
+.kicker{font-family:var(--mono); font-size:11.5px; letter-spacing:.18em;
+  text-transform:uppercase; color:var(--ink-3); margin-bottom:18px}
+.mast h1{font-size:clamp(30px,4.4vw,46px); line-height:1.12; letter-spacing:-.02em; font-weight:700}
+.mast .sub{margin-top:14px; color:var(--ink-2); font-size:17px; max-width:66ch}
+
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(128px,1fr));
+  gap:1px; background:var(--rule); border:1px solid var(--rule);
+  margin:30px 0 0}
+.stat{background:var(--surface); padding:14px 16px}
+.stat dt{font-family:var(--mono); font-size:10.5px; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--ink-3); margin-bottom:5px}
+.stat dd{margin:0; font-family:var(--mono); font-size:21px; font-weight:600;
+  font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.stat dd small{font-size:12px; font-weight:400; color:var(--ink-3); margin-left:2px}
+
+/* ── sections ─────────────────────────────── */
+section{margin-top:60px}
+.shead{display:flex; align-items:baseline; gap:14px; padding-bottom:10px;
+  border-bottom:1px solid var(--rule-2); margin-bottom:26px}
+.shead .n{font-family:var(--mono); font-size:12px; font-weight:600;
+  color:var(--ink-3); letter-spacing:.06em}
+.shead h2{font-size:23px; letter-spacing:-.015em; font-weight:650}
+.lede{color:var(--ink-2); max-width:68ch; margin-bottom:22px}
+
+/* ── rules card ───────────────────────────── */
+.rules{display:grid; gap:1px; background:var(--rule); border:1px solid var(--rule)}
+.rule-row{background:var(--surface); padding:16px 18px; display:grid;
+  grid-template-columns:88px 1fr; gap:18px; align-items:start}
+.rule-row .tag{font-family:var(--mono); font-size:11px; font-weight:700;
+  letter-spacing:.08em; padding:3px 8px; border-radius:3px; text-align:center}
+.t-ok{background:var(--ok-bg); color:var(--ok)}
+.t-fail{background:var(--fail-bg); color:var(--fail)}
+.t-warn{background:var(--warn-bg); color:var(--warn)}
+.t-note{background:var(--note-bg); color:var(--note)}
+
+/* ── provenance ───────────────────────────── */
+.prov{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px}
+.pcard{background:var(--surface); border:1px solid var(--rule); padding:16px 17px;
+  border-top:3px solid var(--mark)}
+.pcard .code{font-family:var(--mono); font-size:26px; font-weight:700;
+  color:var(--mark); line-height:1; margin-bottom:9px}
+.pcard h4{font-size:14.5px; margin-bottom:6px; font-weight:650}
+.pcard p{font-size:13.5px; color:var(--ink-2); line-height:1.55}
+
+/* ── log spine ────────────────────────────── */
+.log{position:relative; padding-left:46px}
+.log::before{content:""; position:absolute; left:15px; top:6px; bottom:6px;
+  width:2px; background:var(--rule-2)}
+.entry{position:relative; margin-bottom:34px}
+.entry::before{content:attr(data-n); position:absolute; left:-46px; top:0;
+  width:32px; height:32px; border-radius:50%;
+  background:var(--surface); border:2px solid var(--rule-2);
+  font-family:var(--mono); font-size:12.5px; font-weight:700; color:var(--ink-2);
+  display:flex; align-items:center; justify-content:center}
+.entry[data-s="fail"]::before{border-color:var(--fail); color:var(--fail)}
+.entry[data-s="ok"]::before{border-color:var(--ok); color:var(--ok)}
+.entry[data-s="warn"]::before{border-color:var(--warn); color:var(--warn)}
+.ehead{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:4px}
+.entry h3{font-size:17.5px; font-weight:650; letter-spacing:-.01em}
+.sh3{font-size:16px; font-weight:650; letter-spacing:-.01em;
+  color:var(--ink); margin:26px 0 10px}
+.chip{font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.07em;
+  padding:2.5px 7px; border-radius:3px; white-space:nowrap}
+.phase{font-family:var(--mono); font-size:11px; color:var(--ink-3); letter-spacing:.05em}
+.body{background:var(--surface); border:1px solid var(--rule); margin-top:11px}
+.row{display:grid; grid-template-columns:74px 1fr; gap:16px;
+  padding:12px 16px; border-bottom:1px solid var(--rule); align-items:start}
+.row:last-child{border-bottom:none}
+.row .lbl{font-family:var(--mono); font-size:11px; letter-spacing:.08em;
+  text-transform:uppercase; color:var(--ink-3); padding-top:3px}
+.row .val{font-size:14.5px; color:var(--ink-2); line-height:1.6}
+.row .val strong{color:var(--ink); font-weight:650}
+.delta{font-family:var(--mono); font-weight:700; font-variant-numeric:tabular-nums}
+.up{color:var(--ok)} .down{color:var(--fail)} .flat{color:var(--ink-3)}
+
+/* ── tables ───────────────────────────────── */
+.tw{overflow-x:auto; border:1px solid var(--rule); background:var(--surface); margin:18px 0}
+table{border-collapse:collapse; width:100%; font-size:13.5px; min-width:440px}
+th,td{padding:9px 13px; text-align:right; border-bottom:1px solid var(--rule);
+  font-variant-numeric:tabular-nums; white-space:nowrap}
+th:first-child,td:first-child{text-align:left; white-space:normal}
+thead th{font-family:var(--mono); font-size:10.5px; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--ink-3); font-weight:600;
+  background:var(--surface-2); border-bottom:1px solid var(--rule-2)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr.hl td{background:var(--ok-bg); font-weight:650}
+tbody tr.dim td{color:var(--ink-3)}
+td.num{font-family:var(--mono)}
+caption{caption-side:top; text-align:left; padding:11px 13px; font-size:12.5px;
+  color:var(--ink-3); background:var(--surface-2); border-bottom:1px solid var(--rule-2);
+  font-family:var(--mono); letter-spacing:.03em}
+
+/* ── bar viz ──────────────────────────────── */
+.bars{display:grid; gap:9px; margin:16px 0}
+.bar{display:grid; grid-template-columns:104px 1fr 62px; gap:12px; align-items:center;
+  font-size:13px}
+.bar .bl{font-family:var(--mono); font-size:11.5px; color:var(--ink-2)}
+.bar .track{height:19px; background:var(--surface-2); border:1px solid var(--rule);
+  position:relative; overflow:hidden}
+.bar .fill{height:100%; background:var(--ok); opacity:.85}
+.bar .fill.w{background:var(--warn)} .bar .fill.f{background:var(--fail)}
+.bar .bv{font-family:var(--mono); font-size:12.5px; font-weight:650;
+  font-variant-numeric:tabular-nums; text-align:right}
+
+/* ── callout ──────────────────────────────── */
+.call{border-left:3px solid var(--mark,var(--note)); background:var(--surface);
+  border-top:1px solid var(--rule); border-right:1px solid var(--rule);
+  border-bottom:1px solid var(--rule); padding:15px 18px; margin:20px 0}
+.call .ct{font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+  text-transform:uppercase; color:var(--mark,var(--note)); font-weight:700; margin-bottom:6px}
+.call p{font-size:14.5px; color:var(--ink-2)}
+.call p+p{margin-top:9px}
+
+/* ── plan ─────────────────────────────────── */
+.plan{display:grid; gap:1px; background:var(--rule); border:1px solid var(--rule)}
+.pstep{background:var(--surface); padding:15px 18px; display:grid;
+  grid-template-columns:64px 1fr 82px; gap:16px; align-items:start}
+.pstep .ph{font-family:var(--mono); font-size:12px; font-weight:700; color:var(--ink-3)}
+.pstep h4{font-size:14.5px; margin-bottom:5px; font-weight:650}
+.pstep p{font-size:13.5px; color:var(--ink-2); line-height:1.55}
+.pstep .st{font-family:var(--mono); font-size:10.5px; font-weight:700;
+  letter-spacing:.06em; padding:3px 7px; border-radius:3px; text-align:center}
+
+footer{margin-top:64px; padding-top:22px; border-top:1px solid var(--rule);
+  font-family:var(--mono); font-size:11.5px; color:var(--ink-3); line-height:1.9}
+@media (max-width:640px){
+  .wrap{padding:0 18px 64px}
+  .row,.rule-row{grid-template-columns:1fr; gap:5px}
+  .pstep{grid-template-columns:1fr; gap:8px}
+  .bar{grid-template-columns:88px 1fr 54px}
+  .log{padding-left:34px}
+  .log::before{left:11px}
+  .entry::before{left:-34px; width:24px; height:24px; font-size:11px}
+}
+</style>
+
+<div class="wrap">
+
+<header class="mast">
+  <div class="kicker">실험 기록 · 2026-08-14 ~ 08-18 · vest-helmet · 53개 문제 · 4개 파생본</div>
+  <h1>안전모·조끼 데이터셋<br>자동 라벨링 실험 기록</h1>
+  <p class="sub">라벨 없는 이미지에서 YOLO 라벨을 재구성하는 파이프라인을 만들기 위한 시도의 전체 기록.
+  발생한 문제, 시도한 해결책, 그리고 각각의 측정치. 다른 도메인으로 넘어가기 전에 여기서 방법을 확정한다.</p>
+
+  <dl class="stats">
+    <div class="stat"><dt>대상 이미지</dt><dd>9,526<small>장</small></dd></div>
+    <div class="stat"><dt>봉인 평가셋</dt><dd>204<small>장 / 616박스</small></dd></div>
+    <div class="stat"><dt>목표 달성 지점</dt><dd>150<small>장</small></dd></div>
+    <div class="stat"><dt>최고 노동 절감</dt><dd>80.8<small>%</small></dd></div>
+    <div class="stat"><dt>자동승인 커버</dt><dd>79.7<small>%</small></dd></div>
+    <div class="stat"><dt>기각된 접근</dt><dd>6<small>건</small></dd></div>
+    <div class="stat"><dt>기록된 문제</dt><dd>53<small>건</small></dd></div>
+    <div class="stat"><dt>GT 반사 오염</dt><dd>15.8<small>%</small></dd></div>
+    <div class="stat"><dt>평가셋 누출</dt><dd>12.6<small>%</small></dd></div>
+  </dl>
+
+  <div class="call" style="--mark:var(--ok); margin-top:26px">
+    <div class="ct">결론</div>
+    <p>사람이 <strong>150장 ± 15장</strong>을 라벨하면(약 27분) 나머지 9,376장 라벨링의 노동이
+    <strong>66% 줄어든다</strong>(64.6~67.8%). <strong>500장</strong>까지 가면(약 50분) 절감 <strong>80.5%</strong>,
+    박스의 <strong>79%가 사람 눈을 거치지 않고 자동 승인</strong>된다(Precision 0.95 보장).
+    맨땅 39시간이 약 6시간이 된다.</p>
+    <p>학습 없는 zero-shot은 25%가 천장이었다. 격차를 만든 것은 모델도 프롬프트도 아니고
+    <strong>사람이 라벨한 예시 수백 장</strong>이다.</p>
+  </div>
+
+  <div class="call" style="--mark:var(--note); margin-top:16px">
+    <div class="ct">08-15 추가</div>
+    <p>편집 UI(P3)를 완성하고 <strong>150장 모델로 6,531장에 예측을 생성해 GT로 계측</strong>했다.
+    시뮬레이션 추정 65%가 32배 큰 표본에서 <strong>63.8% 절감</strong>으로 재확인됐고,
+    자동승인 Precision 0.95는 <strong>conf ≥ 0.80</strong>에서 달성된다(GT 박스의 51.7% 커버).
+    첫 실측 라운드 150장이 준비됐다 — 시뮬레이션 예상 <strong>13분 7초</strong>.</p>
+    <p>GT 봉인을 <strong>물리적으로</strong> 옮겼다. 원본은 <code>db/</code>에서 읽기 전용으로 잠기고,
+    편집은 <code>work/&lt;작업공간&gt;/</code>에만 쓴다. 19,056개 파일 SHA-256 대조로 검증.</p>
+  </div>
+
+  <div class="call" style="--mark:var(--fail); margin-top:16px">
+    <div class="ct">08-16 — 계측 장치를 먼저 고쳐야 했다</div>
+    <p>라벨링을 시작하자마자 <strong>GT 자체의 문제</strong>가 드러났다. 사람이 직접 몇 장을 보니
+    맨머리에 헬멧 박스, 반사재 없는 노란 옷에 조끼 박스, 형태를 알 수 없는 20px 조각에 헬멧 박스가
+    나왔다. 데이터셋에는 <strong>주석 규약 문서가 한 줄도 없다</strong> — Roboflow Universe 에
+    개인이 올린 결과물이다.</p>
+    <p>더 큰 것이 뒤에 있었다. 이미지의 <strong>15.8%가 반사(거울) 패딩</strong>으로 정사각형을
+    맞춘 상태였고, 그 반사 영역에 <strong>GT 가 유령 객체 270개를 라벨</strong>해 두었다.
+    검출 학습에는 "조끼와 똑같이 생긴 이것은 배경이다"라는 모순된 지도가 된다.</p>
+    <p>대응: 권위 순서를 <strong>사람 &gt; GT &gt; 모델</strong>로 재정의하고, 판정 규약을 문서로
+    만들기 시작했으며, 반사를 검출해 잘라내는 도구로 <code>db/vest-helmet_crop</code>을 만들었다.</p>
+  </div>
+
+  <div class="call" style="--mark:var(--fail); margin-top:16px">
+    <div class="ct">08-16 저녁 — 채점표에 답이 적혀 있었다</div>
+    <p>사장님이 valid 를 직접 넘겨보다 train 에서 본 사진이 또 나온다고 지적했다. 확인해 보니
+    <strong>valid 의 12.0%, test 의 10.9%</strong> 가 train 에 같은 사진을 갖고 있었다.
+    바이트가 같은 파일은 <strong>한 장도 없다</strong> — Roboflow 가 전부 640 으로 다시 인코딩해서
+    파일 해시로는 절대 안 걸린다. 그림을 봐야 걸린다.</p>
+    <p>이 데이터셋은 스톡 사진을 긁어 모은 것이고, 스플릿은 파일 번호를 <strong>통째로 세 토막</strong>낸
+    것이다(train #0~7349 · test #7350~8924 · valid #8925~10498). 자르기 전 목록에 이미 같은 사진이
+    여러 번 들어 있었으므로 사본이 서로 다른 토막에 떨어졌다.</p>
+    <p>대응: <code>dedup_dataset.py</code> 로 <strong>train 우선</strong> 규칙에 따라 평가셋 쪽 사본
+    358장을 걷어내 <code>db/vest-helmet_crop_dedup</code> 을 만들었다. train 은 한 장도 잃지 않는다.</p>
+  </div>
+
+  <div class="call" style="--mark:var(--ok); margin-top:16px">
+    <div class="ct">08-18 — 사람과 GPU가 서로 안 기다리게</div>
+    <p>사장님이 방향을 정했다. 라벨링하는 동안 GPU가 뒤에서 학습하고, 새 모델이 나오면
+    아직 안 연 이미지를 다시 예측해 둔다. <strong>목표는 mAP가 아니라 대기의 제거.</strong></p>
+    <p>설계하다 보니 전제 하나가 실측과 어긋났다 — 예측은 176 img/s라 6,681장 전량이 <strong>37초</strong>다.
+    사람이 예측을 앞지르는 것은 물리적으로 불가능하므로 <strong>대기시간은 이미 0이다</strong>.
+    진짜 비용은 <strong>낡음</strong>, 즉 지금 보는 예측을 만든 모델이 몇 장 뒤처져 있는가다.</p>
+    <p>느린 것은 학습뿐인데, 분해해 보니 <strong>학습 에폭의 80%가 검증</strong>이었다.
+    검증셋을 400장으로 줄이고 5에폭마다로 바꾸니 150장 학습이
+    <strong>10.2분 → 3.0분</strong>이 됐다(mAP50 손해 0.0008, 잡음 이하).
+    <code>train_worker.py</code>(별도 프로세스·파일 큐)까지 붙여
+    <strong>train 6,681장 전량을 4.1시간</strong>에 라벨할 수 있는 구조가 됐다 — 빈 화면이면 23.9시간이다.</p>
+  </div>
+</header>
+
+<!-- ══════════ 0. 규칙 ══════════ -->
+<section>
+  <div class="shead"><span class="n">00</span><h2>기본 규칙</h2></div>
+  <p class="lede">이 프로젝트의 목적은 <strong>좋은 안전모 검출기를 얻는 것이 아니라</strong>,
+  라벨 없는 데이터셋을 라벨링하는 <strong>이식 가능한 방법</strong>을 확정하는 것이다.
+  vest-helmet은 정답지가 있는 유일한 데이터셋이므로 <strong>계측 장치이자 가교</strong> 역할을 한다.</p>
+
+  <div class="rules">
+    <div class="rule-row"><span class="tag t-ok">허용</span>
+      <div>GT를 <strong>채점</strong>에만 사용. 예측과 정답을 IoU로 대조해 점수를 낸다.</div></div>
+    <div class="rule-row"><span class="tag t-fail">금지</span>
+      <div>GT를 <strong>자동 라벨러의 학습 데이터</strong>로 사용. 정답지를 먹고 정답을 맞히는 순환이 되며,
+      라벨이 없는 새 데이터셋에는 아무것도 해주지 못한다.</div></div>
+    <div class="rule-row"><span class="tag t-warn">조건부</span>
+      <div>GT를 <strong>사람 주석자의 대역</strong>으로 사용 (액티브 러닝 곡선 시뮬레이션).
+      허용하되 출처를 <code>A</code>로 명시하고, 최종 채점은 봉인된 평가셋에서만 한다.</div></div>
+    <div class="rule-row"><span class="tag t-note">필수</span>
+      <div>모든 라벨은 <strong>출처 태그</strong>를 갖는다. 어떤 라벨이 정답지에서 왔고 어떤 라벨이
+      모델이 스스로 만든 것인지 추적 불가능해지면 측정 자체가 무의미해진다.</div></div>
+  </div>
+</section>
+
+<!-- ══════════ 1. 출처 표기 ══════════ -->
+<section>
+  <div class="shead"><span class="n">01</span><h2>출처 표기 체계</h2></div>
+  <p class="lede">라벨 한 건마다 출처를 기록한다. YOLO <code>.txt</code> 포맷은 메타데이터를 담을 수 없으므로
+  별도 매니페스트(JSONL)에 <code>(split, 파일명, 박스 인덱스)</code> 키로 저장하고, <code>.txt</code>는 표준 그대로 유지한다.</p>
+
+  <p class="lede" style="margin-top:-8px"><strong>2026-08-16 개정.</strong>
+  이전에는 A=GT복사 / B=사람편집 이었다. 권위 순서와 글자 순서가 어긋나 직관에 반했으므로
+  A 와 B 를 맞바꿨다. 개정 시점에 저장된 라벨이 0장이라 마이그레이션은 없었다.</p>
+
+  <div class="prov">
+    <div class="pcard" style="--mark:var(--note)">
+      <div class="code">A</div><h4>사람 · 가장 높음</h4>
+      <p>사람이 직접 그리거나 고친 것. GT 와 부딪히면 이쪽이 이긴다.
+      새 도메인에서 유일하게 실제로 발생하는 비용.</p></div>
+    <div class="pcard" style="--mark:var(--warn)">
+      <div class="code">B</div><h4>GT · 데이터셋 원본 주석자</h4>
+      <p>익명 · 규약 문서 없음 · 오류 확인됨. 부정하는 것이 아니라
+      제자리에 놓는 것이다. 사람이 보지 않은 이미지에서는 유일한 기준.</p></div>
+    <div class="pcard" style="--mark:var(--ok)">
+      <div class="code">C</div><h4>Model · 학습된 모델 예측</h4>
+      <p>라운드 <em>N</em>의 모델이 생성. 모델 ID·신뢰도를 함께 기록.
+      우리가 최대화하려는 대상.</p></div>
+    <div class="pcard" style="--mark:var(--ink-3)">
+      <div class="code">D</div><h4>Zero-shot · 콜드스타트</h4>
+      <p>학습 0회. 본 데이터셋을 한 번도 안 본 공개 가중치의 출력.
+      라벨 소비가 전혀 없는 유일한 출처.</p></div>
+  </div>
+
+  <div class="call" style="--mark:var(--note)">
+    <div class="ct">출처와 검증은 다른 축이다</div>
+    <p>모델이 그린 박스(C)를 사람이 보고 승인해도 <strong>출처는 C 로 남는다</strong>.
+    승격시키면 검수를 마친 이미지가 전부 A 가 되어 자동화율이 0 으로 수렴한다.
+    검증 여부는 박스가 아니라 <strong>이미지 단위</strong>로 기록된다.</p>
+    <p>최종 보고는 <strong>A+B(사람이 만든 라벨) 대 C+D(기계가 만든 라벨)</strong> 로 낸다.</p>
+  </div>
+
+  <div class="call" style="--mark:var(--note)">
+    <div class="ct">핵심 지표</div>
+    <p>최종적으로 보고할 숫자는 <strong>C와 D의 비율</strong>이다. 전체 라벨 중 A·B가 차지하는 비중이
+    곧 사람이 치른 비용이고, C·D가 차지하는 비중이 자동화율이다.</p>
+  </div>
+</section>
+
+<!-- ══════════ 2. 데이터셋 ══════════ -->
+<section>
+  <div class="shead"><span class="n">02</span><h2>데이터셋 실측</h2></div>
+  <div class="tw"><table>
+    <caption>vest-helmet · Roboflow export · nc=2 ['reflective_jacket','safety_helmet']</caption>
+    <thead><tr><th>스플릿</th><th>이미지</th><th>라벨</th><th>불일치</th></tr></thead>
+    <tbody>
+      <tr><td>train</td><td class="num">6,681</td><td class="num">6,681</td><td class="num">0</td></tr>
+      <tr><td>valid</td><td class="num">1,427</td><td class="num">1,427</td><td class="num">0</td></tr>
+      <tr><td>test</td><td class="num">1,418</td><td class="num">1,418</td><td class="num">0</td></tr>
+      <tr class="hl"><td>합계</td><td class="num">9,526</td><td class="num">9,526</td><td class="num">0</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede">전 이미지 640×640 JPG. 라벨은 정규화 bbox 5토큰. 12종 룰 기반 검수를 전량(9,526장)
+  돌린 결과 <strong>이슈 0건</strong> — 정답지로서 신뢰할 수 있다. 스캔 0.07초, 검수 1.32초.</p>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">이 데이터셋의 결정적 성질</div>
+    <p>GT 박스의 <strong>절반 이상이 128px 미만</strong>이고, 안전모는 640px 이미지에서 흔히 32×24px에 불과하다.
+    이 크기 분포가 이후 모든 실패의 원인이 된다.</p>
+  </div>
+
+  <h3 class="sh3">파생본 계보</h3>
+  <div class="tw"><table>
+    <caption>원본은 봉인. 문제를 하나 고칠 때마다 새 파생본을 만들고 매니페스트를 남긴다</caption>
+    <thead><tr><th>데이터셋</th><th>train</th><th>valid</th><th>test</th><th>합계</th>
+      <th>박스</th><th>무엇을 고쳤나</th></tr></thead>
+    <tbody>
+      <tr><td><code>vest-helmet</code></td><td class="num">6,681</td><td class="num">1,427</td>
+        <td class="num">1,418</td><td class="num">9,526</td><td class="num">33,110</td>
+        <td>원본 (봉인)</td></tr>
+      <tr><td><code>vest-helmet_crop</code></td><td class="num">6,681</td><td class="num">1,427</td>
+        <td class="num">1,418</td><td class="num">9,526</td><td class="num">32,840</td>
+        <td>반사 패딩 잘라냄 · 유령 라벨 <strong>−270</strong></td></tr>
+      <tr class="hl"><td><code>vest-helmet_crop_dedup</code></td><td class="num">6,681</td>
+        <td class="num">1,258</td><td class="num">1,229</td><td class="num">9,168</td>
+        <td class="num">31,612</td>
+        <td>스플릿 간 중복 제거 · 이미지 <strong>−358</strong> · 박스 <strong>−1,228</strong></td></tr>
+      <tr><td><code>vest-helmet_crop_dedup_seg</code></td><td class="num">6,681</td>
+        <td class="num">1,258</td><td class="num">1,229</td><td class="num">9,168</td>
+        <td class="num">31,612</td>
+        <td>같은 객체를 <strong>박스 → 폴리곤</strong>으로 (SAM) · 개수 1:1 보존</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede">앞의 두 교정 모두 <strong>train 은 6,681장 그대로</strong>다. 사람이 라벨을 붙일
+  자원은 한 장도 버리지 않았고, 깎인 것은 전부 채점판 쪽이다.
+  마지막 <code>_seg</code> 는 계보상 <strong>가지</strong>다 — <code>_crop_dedup</code> 과 같은
+  이미지·같은 객체를 갖고 라벨의 <em>형식</em>만 다르다.</p>
+</section>
+
+<!-- ══════════ 3. 로그 ══════════ -->
+<section>
+  <div class="shead"><span class="n">03</span><h2>문제와 해결 기록</h2></div>
+  <p class="lede">발생 순서대로. 각 항목은 증상 → 원인 → 조치 → 측정된 효과.</p>
+
+  <div class="log">
+
+    <!-- 1 -->
+    <div class="entry" data-n="1" data-s="ok">
+      <div class="ehead"><h3>스플릿 폴더명이 <code>val</code>이 아니라 <code>valid</code></h3>
+        <span class="chip t-ok">해결</span><span class="phase">도구 / 폴더 스캔</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">표준 YOLO 규약인 <code>train/val/test</code>만 인식하면 valid 스플릿 1,427장을 통째로 놓침.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">Roboflow export는 <code>valid</code>를 쓴다. 규약이 하나가 아님.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">폴더명 하드코딩을 버리고 <strong><code>images/</code>와 <code>labels/</code>가 형제로 있는 디렉터리</strong>를 depth 3까지 재귀 탐색하는 방식으로 전환.</span></div>
+        <div class="row"><span class="lbl">효과</span><span class="val">스플릿 이름에 무관하게 동작. 스플릿 없는 단일 폴더, 멀티 프로젝트 워크스페이스도 자동 인식.</span></div>
+      </div>
+    </div>
+
+    <!-- 2 -->
+    <div class="entry" data-n="2" data-s="ok">
+      <div class="ehead"><h3>Pillow 12에서 <code>PhotoImage</code> blank 생성 시그니처 제거</h3>
+        <span class="chip t-ok">해결</span><span class="phase">도구 / 렌더</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val"><code>ValueError: Image is required</code> — 렌더 시점에 즉시 크래시.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val"><code>ImageTk.PhotoImage(mode=, size=)</code> 형태가 Pillow 12에서 삭제됨.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">실제 <code>Image</code> 객체로 최초 1회 생성 후, 이후 프레임은 <code>paste()</code>로 인플레이스 갱신.</span></div>
+        <div class="row"><span class="lbl">효과</span><span class="val">크래시 해소에 더해 <span class="delta up">−1.9ms/프레임</span> 부수 이득 (아래 3번).</span></div>
+      </div>
+    </div>
+
+    <!-- 3 -->
+    <div class="entry" data-n="3" data-s="ok">
+      <div class="ehead"><h3>프레임당 Tk 오버헤드가 렌더보다 비쌌음</h3>
+        <span class="chip t-ok">해결</span><span class="phase">도구 / 성능</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">렌더 자체는 2.9ms인데 실제 프레임 시간은 9.8ms. 방향키 연타 시 체감 지연.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">매 프레임 <code>PhotoImage</code>를 새로 할당하고 <code>canvas.itemconfig</code>로 재바인딩. 두 비용이 렌더보다 컸음.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val"><code>CanvasBlitter</code> 도입 — 캔버스 크기 PhotoImage 1개를 유지하고 픽셀만 덮어씀. 상태바 갱신은 100ms 스로틀 + trailing 보정.</span></div>
+      </div>
+      <div class="tw"><table>
+        <caption>프레임 비용 분해 (1400×860 캔버스)</caption>
+        <thead><tr><th>구간</th><th>개선 전</th><th>개선 후</th></tr></thead>
+        <tbody>
+          <tr><td>Renderer.render</td><td class="num">2.88 ms</td><td class="num">2.88 ms</td></tr>
+          <tr><td>PhotoImage 할당 + 재바인딩</td><td class="num">6.94 ms</td><td class="num">—</td></tr>
+          <tr><td>cvtColor + fromarray + paste</td><td class="num">—</td><td class="num">4.62 ms</td></tr>
+          <tr class="hl"><td>합계</td><td class="num">9.82 ms</td><td class="num">7.90 ms</td></tr>
+        </tbody>
+      </table></div>
+      <div class="row" style="border:1px solid var(--rule); background:var(--surface)">
+        <span class="lbl">비고</span><span class="val">줌 배율과 무관하게 렌더 비용이 일정하다 (fit 2.9ms / 800% 확대 5.4ms).
+        전체 리사이즈 대신 <strong>보이는 영역만 crop 후 resize</strong>하기 때문. 남은 <code>paste</code> 3.3ms는 Tk 픽셀 업로드 하한.</span>
+      </div>
+    </div>
+
+    <!-- 4 -->
+    <div class="entry" data-n="4" data-s="fail">
+      <div class="ehead"><h3>VLM 좌표계 오독 — 640px가 아니라 0~1000 정규화</h3>
+        <span class="chip t-fail">내 오류</span><span class="phase">VLM / 디코딩</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">Gemma-4-12B 첫 50장 결과가 <strong>F1 0.007</strong>. 사실상 전멸.</span></div>
+        <div class="row"><span class="lbl">단서</span><span class="val">예측 좌표 중 <strong>77개가 640을 초과</strong>. 최댓값이 정확히 1000.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">모델이 PaliGemma/Gemma 계열 관례인 0~1000 그리드로 출력. 내가 640px 픽셀로 가정하고 파싱함. <strong>모델 성능이 아니라 내 파서 버그.</strong></span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">저장해 둔 원문을 스케일 가정만 바꿔가며 재채점 (API 재호출 0회).</span></div>
+      </div>
+      <div class="tw"><table>
+        <caption>가정 좌표계별 재채점 · 동일 응답 원문</caption>
+        <thead><tr><th>가정 스케일</th><th>TP@0.5</th><th>Recall</th><th>평균 IoU</th></tr></thead>
+        <tbody>
+          <tr class="dim"><td>640 (원본 픽셀)</td><td class="num">1</td><td class="num">0.007</td><td class="num">0.056</td></tr>
+          <tr><td>896 (Gemma3 비전타워)</td><td class="num">18</td><td class="num">0.123</td><td class="num">0.173</td></tr>
+          <tr><td>1000 (PaliGemma 관례)</td><td class="num">25</td><td class="num">0.171</td><td class="num">0.227</td></tr>
+          <tr><td>1024</td><td class="num">23</td><td class="num">0.158</td><td class="num">0.226</td></tr>
+          <tr class="hl"><td>1000 + 축 뒤바꿈</td><td class="num">42</td><td class="num">0.288</td><td class="num">0.344</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <!-- 5 -->
+    <div class="entry" data-n="5" data-s="fail">
+      <div class="ehead"><h3>축 순서가 <code>[x1,y1,x2,y2]</code>가 아니라 <code>[y1,x1,y2,x2]</code></h3>
+        <span class="chip t-fail">내 오류</span><span class="phase">VLM / 디코딩</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">스케일을 고쳐도 평균 IoU가 0.227에 머묾. 중앙값은 0.046으로 처참.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">프롬프트에 <code>x1,y1,x2,y2</code>라고 명시했으나 모델이 무시하고 <strong>학습된 네이티브 순서</strong>로 출력. 배열 <code>[a,b,c,d]</code>는 순서를 강제할 수단이 없음.</span></div>
+        <div class="row"><span class="lbl">효과</span><span class="val">평균 IoU <span class="delta up">0.227 → 0.344</span>, 중앙값 <span class="delta up">0.046 → 0.336</span>. 교정 후 자유형식 베이스라인 <strong>F1 0.309</strong>.</span></div>
+      </div>
+    </div>
+
+    <!-- 6 -->
+    <div class="entry" data-n="6" data-s="ok">
+      <div class="ehead"><h3>구조화 출력(json_schema)이 축 모호성을 제거</h3>
+        <span class="chip t-ok">해결</span><span class="phase">VLM / 프롬프트</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">착안</span><span class="val">사용자 제안. 배열 대신 <code>x_min/y_min/x_max/y_max</code> <strong>이름 있는 필드</strong>로 받으면 순서 개념 자체가 사라진다.</span></div>
+        <div class="row"><span class="lbl">검증</span><span class="val">구조화 출력에서는 <strong>뒤바꾸지 않은 해석이 정답</strong> (TP 64 vs 6). 자유형식과 정반대 — 모델이 이름 붙은 슬롯은 올바로 채운다는 증거.</span></div>
+        <div class="row"><span class="lbl">대가</span><span class="val">constrained decoding으로 느려짐. <span class="delta down">4.9 → 8.9초/장</span> (3병렬 기준).</span></div>
+      </div>
+      <div class="tw"><table>
+        <caption>자유형식 vs 구조화 출력 · 동일 50장 · IoU≥0.5</caption>
+        <thead><tr><th>방식</th><th>TP</th><th>FP</th><th>FN</th><th>Prec</th><th>Recall</th><th>F1</th><th>매칭 IoU</th></tr></thead>
+        <tbody>
+          <tr class="dim"><td>자유형식 JSON</td><td class="num">42</td><td class="num">84</td><td class="num">104</td><td class="num">0.333</td><td class="num">0.288</td><td class="num">0.309</td><td class="num">0.694</td></tr>
+          <tr class="hl"><td>구조화 출력</td><td class="num">64</td><td class="num">71</td><td class="num">82</td><td class="num">0.474</td><td class="num">0.438</td><td class="num">0.456</td><td class="num">0.705</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <!-- 7 -->
+    <div class="entry" data-n="7" data-s="warn">
+      <div class="ehead"><h3>실패의 정체는 클래스가 아니라 객체 크기</h3>
+        <span class="chip t-warn">관측</span><span class="phase">VLM / 진단</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">관측</span><span class="val">클래스별로는 큰 조끼 R 0.500 vs 작은 헬멧 R 0.388. 크기별로 자르면 격차가 훨씬 선명하다.</span></div>
+      </div>
+      <div class="bars">
+        <div class="bar"><span class="bl">&lt;32px</span><span class="track"><span class="fill f" style="width:0%"></span></span><span class="bv">0.000</span></div>
+        <div class="bar"><span class="bl">32–64px</span><span class="track"><span class="fill f" style="width:9.1%"></span></span><span class="bv">0.091</span></div>
+        <div class="bar"><span class="bl">64–128px</span><span class="track"><span class="fill w" style="width:19%"></span></span><span class="bv">0.190</span></div>
+        <div class="bar"><span class="bl">≥128px</span><span class="track"><span class="fill" style="width:80.3%"></span></span><span class="bv">0.803</span></div>
+      </div>
+      <div class="call" style="--mark:var(--warn)">
+        <div class="ct">해석</div>
+        <p>대형 객체에서는 <strong>0.803 + 매칭 IoU 0.705</strong>로 실용 수준이다. 즉 VLM이 개념을 모르는 게 아니다.
+        문제는 소형 객체에 한정되며, 이 데이터셋은 소형이 다수라 전체 점수가 끌려 내려간다.</p>
+      </div>
+    </div>
+
+    <!-- 8 -->
+    <div class="entry" data-n="8" data-s="fail">
+      <div class="ehead"><h3>확대로 소형 객체를 복구하려는 시도 — 0.33에서 포화</h3>
+        <span class="chip t-fail">부분 실패</span><span class="phase">VLM / 소형 객체</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">가설</span><span class="val">검출률이 겉보기 픽셀 크기만의 함수라면, 잘라서 확대하면 대형 구간(0.803)에 근접해야 한다.</span></div>
+        <div class="row"><span class="lbl">설계</span><span class="val">원본에서 <strong>놓친</strong> 소형 객체 30개(20–56px)를 골라 여유 배율을 3단계로 바꿔가며 재질의. 90회 호출.</span></div>
+        <div class="row"><span class="lbl">결과</span><span class="val">0.000에서 <strong>0.333까지 회복 후 포화</strong>. 6배 더 키우면 오히려 하락. 0.803 근처에 못 감.</span></div>
+      </div>
+      <div class="tw"><table>
+        <caption>확대율 스윕 · 동일 30객체 · 원본 상태 검출률 0.000</caption>
+        <thead><tr><th>확대 조건</th><th>겉보기 크기</th><th>IoU≥0.5</th><th>검출률</th></tr></thead>
+        <tbody>
+          <tr><td>여유 3.0배</td><td class="num">94 px</td><td class="num">4/30</td><td class="num">0.133</td></tr>
+          <tr class="hl"><td>여유 1.25배</td><td class="num">225 px</td><td class="num">10/30</td><td class="num">0.333</td></tr>
+          <tr class="dim"><td>여유 0.35배 (거의 꽉 참)</td><td class="num">569 px</td><td class="num">9/30</td><td class="num">0.300</td></tr>
+        </tbody>
+      </table></div>
+      <div class="call" style="--mark:var(--fail)">
+        <div class="ct">단서 — 표본 선택 편향</div>
+        <p>이 30개는 <strong>놓친 것만 골라낸</strong> 표본이므로 블러·가림·뒤통수 같은 악조건이 겹친 꼬리다.
+        0.803이 아니라 0.33에서 멈춘 이유가 여기 있다. 크기 곡선 자체는 유효하되, 이 표본은 크기 외 문제가 중첩돼 있다.</p>
+      </div>
+    </div>
+
+    <!-- 9 -->
+    <div class="entry" data-n="9" data-s="fail">
+      <div class="ehead"><h3>Lanczos·언샵·CLAHE 전처리 — 효과 없음</h3>
+        <span class="chip t-fail">기각</span><span class="phase">VLM / 소형 객체</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">가설</span><span class="val">더 좋은 리샘플링 커널이나 국소 대비 강화가 소형 객체의 가독성을 높일 것.</span></div>
+        <div class="row"><span class="lbl">설계</span><span class="val">동일 30객체·동일 확대율(225px)에서 커널만 교체. 120회 호출.</span></div>
+        <div class="row"><span class="lbl">결과</span><span class="val">Lanczos가 Cubic보다 <strong>30개 중 1개</strong> 더 검출. n=30에서 표준오차 ±2.5개 — <strong>완전한 노이즈</strong>. 평균 IoU는 오히려 Cubic이 근소 우위. CLAHE는 명확히 해로움.</span></div>
+        <div class="row"><span class="lbl">결론</span><span class="val"><strong>보간은 없는 정보를 만들지 못한다.</strong> 22px 객체를 569px로 키워도 원본 ~500픽셀을 넓은 캔버스에 재분배할 뿐.</span></div>
+      </div>
+      <div class="tw"><table>
+        <caption>리샘플링 커널 비교 · 동일 30객체 · 동일 확대율</caption>
+        <thead><tr><th>전처리</th><th>IoU≥0.5</th><th>검출률</th><th>평균 IoU</th></tr></thead>
+        <tbody>
+          <tr><td>INTER_CUBIC (기준)</td><td class="num">9/30</td><td class="num">0.300</td><td class="num">0.357</td></tr>
+          <tr><td>INTER_LANCZOS4</td><td class="num">10/30</td><td class="num">0.333</td><td class="num">0.350</td></tr>
+          <tr><td>LANCZOS4 + 언샵마스크</td><td class="num">10/30</td><td class="num">0.333</td><td class="num">0.342</td></tr>
+          <tr class="dim"><td>LANCZOS4 + CLAHE</td><td class="num">8/30</td><td class="num">0.267</td><td class="num">0.317</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <!-- 10 -->
+    <div class="entry" data-n="10" data-s="fail">
+      <div class="ehead"><h3>GT 9,526건을 학습에 투입 — 전제 위반</h3>
+        <span class="chip t-fail">내 오류</span><span class="phase">방법론</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">사건</span><span class="val">"LoRA 대신 YOLO를 학습시켜라"는 결론에 따라 train 6,681장으로 YOLO11s 학습을 착수함.</span></div>
+        <div class="row"><span class="lbl">지적</span><span class="val">사용자가 즉시 정지시킴. <strong>9,526 라벨은 자동화의 대상이지 연료가 아니다.</strong></span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">"좋은 검출기를 어떻게 얻나"와 "라벨 없는 데이터를 어떻게 라벨링하나"를 혼동. 후자가 실제 문제였고, 전자의 답을 적용하면 순환에 빠진다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">작업 종료, GPU 해제. 이후 zero-shot(출처 <code>D</code>) 경로로 전환. 위 규칙표와 출처 태그 체계를 이 사건에서 도출.</span></div>
+      </div>
+    </div>
+
+    <!-- 11 -->
+    <div class="entry" data-n="11" data-s="warn">
+      <div class="ehead"><h3>Windows에서 DataLoader 워커 무한 재귀</h3>
+        <span class="chip t-warn">미해결</span><span class="phase">환경</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val"><code>freeze_support()</code> 오류. 학습이 사실상 시작도 못 함.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">Windows는 <code>spawn</code> 방식이라 워커가 스크립트를 재import한다. <code>if __name__ == "__main__":</code> 가드가 없으면 학습 코드가 재실행됨.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">main 가드 추가 또는 <code>workers=0</code>. 학습 자체를 보류했으므로 <strong>재개 시 적용 예정</strong>.</span></div>
+      </div>
+    </div>
+
+    <!-- 13~17 은 아래에. 12 부터 이어짐 -->
+    <!-- 12 -->
+    <div class="entry" data-n="12" data-s="ok">
+      <div class="ehead"><h3>성공 기준을 F1에서 사람 편집 비용으로 전환</h3>
+        <span class="chip t-ok">해결</span><span class="phase">방법론</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">문제</span><span class="val">F1 0.456은 "절반쯤 맞다"로 들리지만, 실제로 사람이 아끼는 노동이 얼마인지는 말해주지 않는다.</span></div>
+        <div class="row"><span class="lbl">정의</span><span class="val">누락 = 새로 그림(5초) · 오검출 = 삭제(1초) · IoU 0.5~0.75 = 미세조정(3초) · IoU≥0.75 = 그대로 승인(0초). 기준선은 전부 직접 그리기.</span></div>
+        <div class="row"><span class="lbl">발견</span><span class="val">F1 0.456짜리 구조화 출력의 실제 절감은 <strong>17%뿐</strong>. 지표가 성능을 크게 과대평가하고 있었다.</span></div>
+      </div>
+      <div class="tw"><table>
+        <caption>편집 비용 · GT 146박스 / 수동 기준선 730초</caption>
+        <thead><tr><th>방식</th><th>승인</th><th>조정</th><th>그리기</th><th>삭제</th><th>비용</th><th>절감</th></tr></thead>
+        <tbody>
+          <tr class="dim"><td>자유형식 VLM</td><td class="num">13</td><td class="num">29</td><td class="num">104</td><td class="num">84</td><td class="num">691 s</td><td class="num">5%</td></tr>
+          <tr><td>구조화 출력 VLM</td><td class="num">22</td><td class="num">42</td><td class="num">82</td><td class="num">71</td><td class="num">607 s</td><td class="num">17%</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <!-- 13 -->
+    <div class="entry" data-n="13" data-s="warn">
+      <div class="ehead"><h3>ultralytics 자동설치가 시스템 파이썬의 torch 를 덮어쓸 뻔함</h3>
+        <span class="chip t-ok">해결</span><span class="phase">환경</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">YOLO-World 의 <code>set_classes</code> 가 CLIP 텍스트 인코더를 요구하는데, ultralytics 가 <code>C:\Python314</code> 에 자동 설치를 시도하다 권한 오류(os error 5)로 실패.</span></div>
+        <div class="row"><span class="lbl">위험</span><span class="val">그 자동설치가 <strong>torch 116MB 재설치를 시도</strong>하고 있었다. 성공했다면 Blackwell 대응 <code>cu130</code> nightly 가 안정판으로 덮여 <strong>CUDA 가 깨졌을 것</strong>.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val"><code>--system-site-packages</code> venv 생성(기존 torch 상속, 수 GB 재다운로드 회피) + CLIP 을 <code>--no-deps</code> 로 설치 + <code>YOLO_AUTOINSTALL=false</code> 로 자동설치 영구 차단.</span></div>
+      </div>
+    </div>
+
+    <!-- 14 -->
+    <div class="entry" data-n="14" data-s="ok">
+      <div class="ehead"><h3>YOLO-World 인스턴스 재사용 시 CLIP 텍스트 토큰 디바이스 불일치</h3>
+        <span class="chip t-ok">해결</span><span class="phase">P1</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">첫 <code>predict</code> 이후 다시 <code>set_classes</code> 를 부르면 <code>RuntimeError: index is on cpu, other tensors on cuda:0</code>.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">predict 가 모델을 cuda 로 옮긴 뒤에도 CLIP 텍스트 토큰은 cpu 에서 생성됨.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">프롬프트 조합마다 <code>YOLO()</code> 를 새로 로드. 격자 탐색에서 쌍마다 재로드해도 총 111초로 무시 가능.</span></div>
+      </div>
+    </div>
+
+    <!-- 15 -->
+    <div class="entry" data-n="15" data-s="fail">
+      <div class="ehead"><h3>프롬프트 변형을 한 번에 넣고 비교한 설계 결함</h3>
+        <span class="chip t-fail">내 오류</span><span class="phase">P1</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">시도</span><span class="val">추론 1회로 12개 프롬프트를 동시 평가하려고 전부 <code>set_classes</code> 에 한꺼번에 넣음.</span></div>
+        <div class="row"><span class="lbl">문제</span><span class="val">YOLO-World 점수는 <strong>전체 클래스 목록에 의존</strong>한다(CLIP 텍스트 임베딩이 서로 경쟁). 12개를 넣은 결과와 2개를 넣은 결과가 다르다.</span></div>
+        <div class="row"><span class="lbl">증거</span><span class="val"><code>"high visibility reflective vest worn by a worker"</code> 가 12클래스 구성에서는 F1 <strong>0.000</strong>, 2클래스 구성에서는 전체 F1 0.493 의 주역.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">실제 배포 구성인 <strong>2클래스 쌍</strong>으로 6×5 격자 재실행. 프롬프트는 배포 형태 그대로 평가해야 한다.</span></div>
+      </div>
+    </div>
+
+    <!-- 16 -->
+    <div class="entry" data-n="16" data-s="fail">
+      <div class="ehead"><h3>단일 시드로 곡선을 재고 노이즈를 신호로 읽음</h3>
+        <span class="chip t-fail">내 오류</span><span class="phase">P2 / P2b</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">사건 1</span><span class="val">P2 설계 시 "초반 라운드는 시드 2~3개 반복 평균" 이라고 적어놓고 <strong>실행하지 않았다</strong>. 무작위·AL 곡선 전부 시드 1개.</span></div>
+        <div class="row"><span class="lbl">사건 2</span><span class="val">AL 적자가 200→350 구간에서 −0.031→−0.005 로 좁혀지는 것을 보고 <strong>"400~450 에서 교차"</strong> 라고 외삽. 400 에서 −0.011 로 다시 벌어져 틀림.</span></div>
+        <div class="row"><span class="lbl">사건 3</span><span class="val">이어서 <strong>"액티브 러닝 패배, 큐 구조 불필요"</strong> 로 단정. 표본 1개로 내린 결론이었다.</span></div>
+        <div class="row"><span class="lbl">발견</span><span class="val">사용자 지적으로 n=200 을 시드 4개로 반복. mAP50 은 σ 0.0088 로 <strong>seed 0 이 4회 중 최고</strong>였고, 절감률은 σ 1.8%p 로 <strong>seed 0 이 정확히 평균</strong>. 지표에 따라 편향 방향이 다르다.</span></div>
+        <div class="row"><span class="lbl">교훈</span><span class="val">절감률이 mAP50 보다 시드에 둔감하다 — conf 임계값 최적화가 모델 차이를 일부 흡수하기 때문. <strong>성공 기준으로 쓰는 지표가 더 튼튼한 쪽이었다</strong>는 것은 사후에 확인된 다행.</span></div>
+      </div>
+    </div>
+
+    <!-- 17 -->
+    <div class="entry" data-n="17" data-s="ok">
+      <div class="ehead"><h3>FPS 다양성 선별의 특징 스케일 검토 (외부 지적)</h3>
+        <span class="chip t-ok">검증 후 현행 유지</span><span class="phase">P2b</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">지적</span><span class="val">Farthest-Point Sampling 에서 박스 면적(픽셀 단위)이 클래스 비율(0~1)을 압도해 거리 계산을 지배할 수 있다.</span></div>
+        <div class="row"><span class="lbl">확인</span><span class="val">해당 없음. 면적은 <code>/(640×640)</code> 로 이미 0~1 이고(실측 최댓값 <strong>0.467</strong>), FPS 직전 z-score 표준화가 한 겹 더 있다.</span></div>
+        <div class="row"><span class="lbl">더 판 것</span><span class="val">z-score 는 분산만 맞추고 <strong>왜도는 못 고치므로</strong> FPS 가 이상치를 물 수 있다는 가설을 세워 측정. 결과: <code>|z|&gt;5</code> 인 점 <strong>0개</strong>, 선발의 극단성은 후보 대비 <strong>1.03~1.48배</strong>(퇴화라면 3~5배).</span></div>
+        <div class="row"><span class="lbl">대안 시험</span><span class="val">순위(분위수) 정규화로 교체 시 극단성은 줄지만 <strong>커버리지가 함께 악화</strong>(분산도 2.049→1.897, 무작위는 1.286). 목적에 역행하므로 현행 유지.</span></div>
+      </div>
+    </div>
+
+    <!-- ─────────── 08-15 세션 ─────────── -->
+    <div class="entry" data-n="18" data-s="ok">
+      <div class="ehead"><h3>GT 봉인이 <em>규율</em>에만 의존하고 있었음</h3>
+        <span class="chip t-ok">해결</span><span class="phase">P3 / 구조</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">10번 항목에서 이미 한 번 전제를 위반했다. 편집 기능을 붙이면 <strong>원본 <code>labels/</code>에 쓰는 코드 경로가 생긴다</strong> — 같은 사고가 반복될 자리.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">"쓰지 말자"는 합의는 코드가 강제하지 않는다. 실수 한 번이면 채점 기준이 사라진다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">편집 결과를 <strong>작업공간에만</strong> 쓰도록 설계하고, 작업공간이 없으면 <code>_can_edit()</code>가 모든 변경 경로를 막는다. 원본에 쓰는 함수 자체를 만들지 않았다.</span></div>
+        <div class="row"><span class="lbl">효과</span><span class="val">스튜디오를 열고 편집 없이 탐색한 뒤 GT 9,526개 해시를 대조 — <strong>불변 확인</strong>. 이후 구조 재편(23번)으로 OS 수준 잠금이 한 겹 더 붙었다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="19" data-s="ok">
+      <div class="ehead"><h3>편집량을 이벤트로 세면 시뮬레이션과 비교가 불가능해짐</h3>
+        <span class="chip t-ok">해결</span><span class="phase">P3 / 계측</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">문제</span><span class="val">사람의 조작을 그대로 세면 <strong>그렸다 지운 박스</strong>나 <strong>여러 번 미세조정한 박스</strong>가 중복 계상된다. 그러면 P2에서 오프라인으로 계산한 절감률과 같은 축에 놓을 수 없다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">이벤트를 세지 않고 <strong>시드 상태 대비 최종 상태를 IoU 그리디로 비교</strong>해 편집량을 뽑는다(<code>diff_ops</code>). 매칭 규칙(IoU 0.5 매칭 / 0.75 무료)을 시뮬레이션과 동일하게 맞췄다.</span></div>
+        <div class="row"><span class="lbl">부수</span><span class="val">실제 소요 시간도 따로 기록(장당 상한 180초, 자리 비움 방지). <strong>모델 추정 비용 대 실측 시간</strong>을 비교하면 5초/1초/3초 단가 자체를 검증할 수 있다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="20" data-s="ok">
+      <div class="ehead"><h3><code>bind_all</code>이 검색창에 친 글자까지 가로챘음 (잠복 버그)</h3>
+        <span class="chip t-ok">해결</span><span class="phase">P3 / UI</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">파일 검색창에 <code>r</code>을 치면 뷰가 리셋됐다. 기존 뷰어에 이미 있던 버그.</span></div>
+        <div class="row"><span class="lbl">확대</span><span class="val">편집 단축키를 추가하면 사고가 커진다 — 파일명에 <strong>숫자만 쳐도 선택된 박스의 클래스가 바뀌고</strong>, <code>Delete</code>가 박스를 지운다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">모든 단축키를 가드로 감싸 텍스트 위젯에서 온 키 이벤트를 삼킨다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="21" data-s="ok">
+      <div class="ehead"><h3><code>focus_get()</code>이 미매핑 창에서 <code>None</code> — 가드가 통째로 뚫림</h3>
+        <span class="chip t-ok">해결</span><span class="phase">P3 / UI</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">20번의 가드를 넣었는데 테스트가 실패. 검색창에 포커스를 줬는데도 단축키가 통과했다.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">창이 화면에 매핑되기 전에는 <code>focus_set()</code>이 먹지 않아 <code>focus_get()</code>이 <code>None</code>을 돌려준다. <code>isinstance(None, Entry)</code>는 <code>False</code>라 가드가 무조건 통과.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">포커스를 조회하는 대신 <strong>키 이벤트의 <code>event.widget</code></strong>으로 판정. 키 이벤트는 언제나 포커스를 가진 위젯에서 올라오므로 조회가 필요 없다.</span></div>
+        <div class="row"><span class="lbl">교훈</span><span class="val">테스트가 실패했기에 발견했다. 창을 숨긴 채 돌리는 GUI 테스트는 <strong>포커스 의존 로직을 못 믿게</strong> 만든다 — 그 검증만 창을 띄워서 한다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="22" data-s="warn">
+      <div class="ehead"><h3>임계값 아래 예측을 클릭으로 승격하면 '그리기 5초'로 계상됨</h3>
+        <span class="chip t-warn">미해결</span><span class="phase">P3 / 비용 모델</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">기각 티어 고스트를 더블클릭 한 번으로 수락하는 동작이, 상태 비교상 <strong>새로 그린 박스</strong>가 되어 5초로 계산된다. 실제 조작은 1~2초.</span></div>
+        <div class="row"><span class="lbl">판단</span><span class="val">비용 모델을 지금 바꾸면 <strong>P1·P2 수치와 비교가 깨진다</strong>. 단가 변경은 데이터를 모은 뒤에 할 일.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">meta 에 <code>promoted</code> 개수를 별도 기록. 사후에 1~2초로 다시 값을 매겨 재계산할 수 있게만 해뒀다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="23" data-s="ok">
+      <div class="ehead"><h3>봉인을 논리적 수준에서 물리적 격리로 전환</h3>
+        <span class="chip t-ok">해결</span><span class="phase">구조 / 데이터</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">동기</span><span class="val">라벨셋이 여러 벌(수동 / 모델 검수 / 세그멘테이션) 생길 예정인데 원본과 작업본이 같은 트리에 섞여 있었다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val"><code>db/</code>(원본·읽기전용) · <code>work/&lt;작업공간&gt;/</code>(라벨만, 이미지 없음) · <code>export/</code>(조립 결과)로 3분할. 라벨 9,526개와 <code>data.yaml</code>에 OS 읽기전용 속성 부여.</span></div>
+        <div class="row"><span class="lbl">검증</span><span class="val">이동 전후 <strong>19,056개 파일 SHA-256 전량 대조</strong>(불일치 시 자동 롤백하도록 작성). 쓰기 시도가 <code>PermissionError</code>로 거부되는 것까지 확인.</span></div>
+        <div class="row"><span class="lbl">효과</span><span class="val">봉인이 2중이 됐다 — 코드에 경로가 없고, 있어도 OS가 막는다. 이미지는 <code>db</code>에만 존재하므로 작업공간을 몇 개 만들어도 늘어나는 건 텍스트뿐.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="24" data-s="ok">
+      <div class="ehead"><h3>작업공간이 스플릿에 묶여 valid 로 넘어가면 빈 화면</h3>
+        <span class="chip t-ok">해결</span><span class="phase">구조 / UI</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">train 150장으로 만든 작업목록 상태에서 valid 스플릿을 열면 목록이 비어 아무것도 안 보였다. 이유 안내도 없음.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">작업목록을 스플릿별로 갖는데, 없는 스플릿에서 필터가 빈 결과를 그대로 표시했다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">해당 스플릿에 작업목록이 없으면 <strong>전체 목록으로 폴백</strong>하고 상태바에 이유를 띄운다. 라벨은 <code>labels/&lt;split&gt;/</code>로 나뉘어 저장되므로 그대로 이어서 작업 가능.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="25" data-s="ok">
+      <div class="ehead"><h3>모델이 학습에 쓴 이미지를 작업목록에서 뺄 방법이 없었음</h3>
+        <span class="chip t-ok">해결</span><span class="phase">구조 / 실험 설계</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">위험</span><span class="val">모델은 <strong>이미 본 이미지에 과하게 자신 있는 예측</strong>을 낸다. 그걸 리뷰 대상에 넣으면 자동승인율과 절감률이 실제보다 좋게 나온다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">작업공간 생성 다이얼로그에 <strong>"예측이 있는 이미지만"</strong> 옵션 추가(기본 켬). 예측 생성 단계에서 학습 이미지를 빼두면 자동으로 제외된다.</span></div>
+        <div class="row"><span class="lbl">확인</span><span class="val">첫 라운드 150장 · 학습분과 겹침 <strong>0장</strong>.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="26" data-s="ok">
+      <div class="ehead"><h3>학습된 체크포인트 전부가 <code>%TEMP%</code>에 방치돼 있었음</h3>
+        <span class="chip t-ok">해결</span><span class="phase">구조 / 자산</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">P2 의 모델 14개가 전부 임시 폴더 안. 재현에 40분(80 epochs)이 드는 자산이 언제 청소돼도 이상하지 않은 위치에 있었다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val"><code>models/&lt;이름&gt;/</code>로 해시 검증하며 이동. <code>model.json</code>에 학습 장수·선별 방식·mAP50·<strong>학습에 쓴 이미지 목록</strong>을 함께 기록.</span></div>
+        <div class="row"><span class="lbl">보존</span><span class="val">n50 · n150 · n500 · n600 (mAP50 0.579 / 0.827 / 0.903 / 0.915). 전부 SHA-256 일치.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="27" data-s="ok">
+      <div class="ehead"><h3>임계값을 GT 로 고르면 계측이 아니라 튜닝이 된다</h3>
+        <span class="chip t-note">판단</span><span class="phase">P3 / 실험 설계</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">긴장</span><span class="val">비용이 최소가 되는 시드 하한 <code>lo</code>를 GT 로 찾으면 그 결과를 성능으로 보고할 수 없다. 실제 운용에서는 GT 가 없다.</span></div>
+        <div class="row"><span class="lbl">관측</span><span class="val">다행히 <strong>비용 곡선이 <code>lo</code> 0.15~0.35 구간에서 평평</strong>했다(63.3~63.8%). 최적 0.20과 기본값 0.25의 차이가 <strong>0.1%p</strong>.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">기본값 0.25 를 그대로 사용. 실익이 없는 곳에서 튜닝 논란을 만들지 않는다.</span></div>
+        <div class="row"><span class="lbl">단, hi 는</span><span class="val">자동승인 임계 <code>hi</code>=0.80 은 GT 계측에서 가져왔다. 이건 <strong>"이 방법이 P≥0.95 에 닿으려면 얼마가 필요한가"</strong>라는 계측 결과이지 성능 주장이 아니다. 새 도메인에서는 사람이 라벨한 소수 표본으로 잡아야 한다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="28" data-s="ok">
+      <div class="ehead"><h3>성능 비교에서 기준선을 불리하게 잡아 12.9배로 과대평가</h3>
+        <span class="chip t-ok">해결</span><span class="phase">성능 / 측정 방법</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">우회 경로가 기준 대비 <strong>12.9배</strong>로 측정됐다. 그런데 기준선이 18 img/s — 실제 예측 생성 때는 97 img/s 였다.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">기준 경로에 512장을 <strong>한 번에</strong> 넘겼다. <code>Results</code> 객체가 원본 이미지를 들고 있어 630MB가 쌓이며 비선형으로 느려졌다. 실제 코드는 64장씩 끊어 돌린다.</span></div>
+        <div class="row"><span class="lbl">재측정</span><span class="val">같은 조건(64장씩)으로 맞추니 <strong>1.5~1.9배</strong>. 처음 추정했던 "97→400 img/s"도 틀렸다 — 합성 벤치마크의 순수 GPU 상한을 실제 파이프라인에 그대로 대입한 오류.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="29" data-s="ok">
+      <div class="ehead"><h3>박스를 정렬 순서로 짝지어 좌표 오차 555px</h3>
+        <span class="chip t-ok">해결</span><span class="phase">성능 / 측정 방법</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">두 경로의 검출을 대조하니 좌표 최대 오차 <strong>555px</strong>. 이미지가 640px인데 그보다 큰 오차.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">신뢰도로 정렬한 뒤 <strong>같은 순번끼리</strong> 비교했다. 신뢰도가 비슷한 박스들의 순서가 갈리면 전혀 다른 박스끼리 비교된다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">IoU 그리디 매칭(≥0.9)으로 짝지은 뒤 비교. 실제 오차는 신뢰도 0.0026, <strong>티어 변경 0건</strong>이었다.</span></div>
+        <div class="row"><span class="lbl">교훈</span><span class="val">순서 가정은 조용히 틀린다. 결과가 이상하면 <strong>측정 코드를 먼저 의심</strong>할 것.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="30" data-s="fail">
+      <div class="ehead"><h3>GPU JPEG 디코드는 4배 빠르지만 라벨을 7.4% 흔든다</h3>
+        <span class="chip t-fail">기각</span><span class="phase">성능 / 전처리</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">동기</span><span class="val">GPU 가 27%만 일하고 73%가 JPEG 디코드·배열 정리였다. 노는 GPU 로 디코드를 넘기는 건 이 분야의 정석(NVIDIA DALI).</span></div>
+        <div class="row"><span class="lbl">결과</span><span class="val">128 → <strong>505 img/s (3.95배)</strong>. 이득의 정체는 SM 이 아니라 PCIe — 풀린 픽셀 630MB 대신 압축 25MB만 전송한다.</span></div>
+        <div class="row"><span class="lbl">함정</span><span class="val">nvJPEG 과 libjpeg-turbo 의 디코드 결과가 다르다(픽셀 최대차 <strong>80</strong>, 21.7% 상이). 같은 모델·같은 NMS 로 <strong>디코더만</strong> 바꿨는데 라벨로 앉는 박스의 <strong>7.39%</strong>가 달라지고 티어가 83건 뒤집혔다.</span></div>
+        <div class="row"><span class="lbl">진단</span><span class="val">GPU 가 부정확한 게 아니라 <strong>학습/추론 디코더 불일치</strong>다. 모델은 cv2 로 디코드된 픽셀로 학습됐다. 쓰려면 학습부터 바꿔야 한다.</span></div>
+        <div class="row"><span class="lbl">판단</span><span class="val">6,531장에서 51초→13초, <strong>38초 절약</strong>. 사람 검수 900초 옆에서 의미가 없다. 수십만 장 규모가 되면 재검토.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="31" data-s="ok">
+      <div class="ehead"><h3>CPU 스레드를 늘려서가 아니라 순차 읽기를 없애서 1.8배</h3>
+        <span class="chip t-ok">해결</span><span class="phase">성능 / 적용</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">가설</span><span class="val">9700X 8코어/16스레드인데 학습 <code>workers=4</code>. 낮아 보였다.</span></div>
+        <div class="row"><span class="lbl">반증</span><span class="val">실측 결과 <strong>차이 없음</strong>(2.47 / 2.68 / 2.44초). 150장을 batch 16으로 돌면 epoch당 10배치 — 워커 4개가 초당 2,600장을 공급하는데 필요한 건 150장이었다. 스튜디오 앱도 마찬가지(사람 6초/장 vs 로더 4,000장/초).</span></div>
+        <div class="row"><span class="lbl">진짜 대상</span><span class="val"><code>model.predict(경로)</code>가 파일을 <strong>한 장씩 순차로</strong> 읽고 있었다. 디코드만 12스레드로 선행하고 predict 에는 <strong>이미 풀린 배열</strong>을 넘기면 전처리·추론·NMS 는 ultralytics 코드 그대로 유지된다.</span></div>
+        <div class="row"><span class="lbl">효과</span><span class="val">6,531장 <strong>67.0초 → 37.2초</strong>(97 → 176 img/s). 재생성본과 기존 예측이 <strong>6,531/6,531 바이트 단위 동일</strong>. <code>make_preds.py</code>로 도구화.</span></div>
+        <div class="row"><span class="lbl">부수</span><span class="val">학습 epoch 2.55초 중 <strong>1.11초(43%)가 매 epoch 검증 204장</strong>임을 확인. 끄면 80 epoch 기준 3.4분→1.9분이지만 <code>best.pt</code> 선택 근거가 사라져 유지.</span></div>
+      </div>
+    </div>
+
+    <!-- ─────────── 08-16 세션 ─────────── -->
+    <div class="entry" data-n="32" data-s="fail">
+      <div class="ehead"><h3>GT 자체에 오류가 있다 — 계측 장치의 눈금이 의심스러워짐</h3>
+        <span class="chip t-fail">전제 붕괴</span><span class="phase">데이터 품질</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">발견</span><span class="val">라벨링을 시작한 사람이 몇 장 만에 찾아냈다. <code>00017</code> 은 <strong>램프에 빛나는 머리카락</strong>에 헬멧 박스가 쳐져 있었다(맨머리). <code>04875</code> 는 반사재 없는 그냥 노란 옷. <code>07808</code> 은 형태를 알 수 없는 20×94px 조각.</span></div>
+        <div class="row"><span class="lbl">파장</span><span class="val">이 프로젝트의 모든 숫자 — zero-shot 25% 천장, 150장→65% 절감, 자동승인 P 0.955 — 는 <strong>이 GT 를 정답으로 놓고</strong> 채점한 것이다.</span></div>
+        <div class="row"><span class="lbl">확인</span><span class="val">README 에 <strong>주석 기준이 한 줄도 없다</strong>. "Provided by a Roboflow user" 가 전부. 큐레이션된 벤치마크가 아니라 개인 업로드였다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">권위 순서를 <strong>사람 &gt; GT &gt; 모델</strong>로 재정의. GT 를 부정하는 게 아니라 "익명 주석자 1명의 결과물"이라는 제자리에 놓았다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="33" data-s="ok">
+      <div class="ehead"><h3>판정 기준을 내가 정하려다 멈춤</h3>
+        <span class="chip t-ok">교정</span><span class="phase">방법론</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">한 일</span><span class="val">GT 오류율을 재려고 대조표 128장을 뽑아 "이건 오류, 저건 애매" 라고 판정하기 시작했다.</span></div>
+        <div class="row"><span class="lbl">지적</span><span class="val">"너가 측정하진마."</span></div>
+        <div class="row"><span class="lbl">문제</span><span class="val">맞는 지적이었다. 무엇이 오류인지 <strong>내가 정하기 시작하면 채점 기준이 둘</strong>이 된다. 출처 태그 체계를 만든 이유가 정확히 그것을 막기 위해서였는데 스스로 어겼다.</span></div>
+        <div class="row"><span class="lbl">규칙</span><span class="val">판정은 사람이 하고 도구는 <strong>후보만 기계적으로</strong> 뽑는다. IoU 계산·대조표 생성까지가 도구의 몫이다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="34" data-s="ok">
+      <div class="ehead"><h3>주석 규약이 없어서 편집 비용에 잡음이 섞인다</h3>
+        <span class="chip t-ok">해결</span><span class="phase">방법론</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">문제</span><span class="val">사람이 모델 예측을 <strong>자기 기준</strong>으로 고치면, 측정된 편집량이 "자동화가 부족해서"인지 "GT 와 생각이 달라서"인지 구분되지 않는다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val"><code>docs/labeling_convention.md</code> 를 만들어 판정을 그때그때 기록. 확정된 규칙 4개:<br>
+          <strong>R1</strong> 실제 객체여야 한다 (빛 반사·블러로 그렇게 보이는 것 제외)<br>
+          <strong>R2</strong> <code>reflective_jacket</code> 은 반사재가 기준 — 색이 아니다<br>
+          <strong>R3</strong> 박스는 가려진 부분까지 덮는다 (amodal)<br>
+          <strong>R4</strong> 맥락으로 판단할 수 있을 때만 라벨한다</span></div>
+        <div class="row"><span class="lbl">순서</span><span class="val">R4 가 R3 보다 먼저다. 라벨할지부터 정하고 그다음에 어디까지 덮을지를 정한다. 근거가 없으면 박스를 어떻게 그릴지 물을 필요도 없다.</span></div>
+        <div class="row"><span class="lbl">이식성</span><span class="val">새 도메인에는 GT 가 아예 없다. <strong>규약을 문서로 만드는 것 자체가 이식할 절차의 일부</strong>다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="35" data-s="ok">
+      <div class="ehead"><h3>출처 태그가 권위 순서와 어긋나 있었다</h3>
+        <span class="chip t-ok">해결</span><span class="phase">체계</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">A=GT복사 / B=사람편집 이었는데, 권위는 사람이 위였다. 글자 순서와 권위 순서가 반대라 매번 헷갈렸다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">A=사람 · B=GT 로 맞바꿈. <strong>A&gt;B&gt;C&gt;D</strong> 가 그대로 권위 순서가 된다.</span></div>
+        <div class="row"><span class="lbl">타이밍</span><span class="val">저장된 라벨이 <strong>0장</strong>인 시점이라 마이그레이션이 없었다. 라벨링을 시작한 뒤였다면 모든 meta 파일을 고쳐야 했다.</span></div>
+        <div class="row"><span class="lbl">부수</span><span class="val">db 원본을 볼 때 출처 칸이 <code>-</code> 로 비어 있던 것도 이때 <code>B</code> 로 채웠다. "내가 만든 게 아니라 원본"이 한눈에 보인다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="36" data-s="ok">
+      <div class="ehead"><h3>작업공간을 만들 때마다 일회용 스크립트를 쓰고 있었다</h3>
+        <span class="chip t-ok">해결</span><span class="phase">도구</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">지적</span><span class="val">"계속해서 작업공간을 만들지 말고 하나의 기능으로 만들고 그걸 사용하자."</span></div>
+        <div class="row"><span class="lbl">문제</span><span class="val">세 번째 스크립트를 쓸 참이었다. 그러면 <strong>어떤 조건으로 뽑았는지 기록이 남지 않는다</strong>.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val"><code>build_worklist()</code> 를 UI 밖 순수 함수로 만들고 다이얼로그에 연결. 전체/무작위/등간격, 예측 없는 이미지 제외, 다른 작업공간과 겹침 방지, 파일 목록 불러오기. 입력할 때마다 단계별 미리보기가 갱신된다.</span></div>
+        <div class="row"><span class="lbl">기록</span><span class="val">뽑은 조건이 <code>workspace.json</code> 의 <code>worklist_spec</code> 에 남는다. 같은 목록을 언제든 다시 만들 수 있다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="37" data-s="ok">
+      <div class="ehead"><h3>배치 파일에 한글 주석을 넣으면 cmd 가 줄 동기화를 잃는다</h3>
+        <span class="chip t-ok">해결</span><span class="phase">환경</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val"><code>'eep' is not recognized...</code> — <code>rem</code> 주석의 단어 조각들을 명령으로 실행하려 들었다. 두 번 겪었다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">배치는 <strong>4줄짜리 껍데기</strong>로 줄이고 실제 로직을 <code>launch.ps1</code> 로 옮김. 배치는 ASCII 만(비ASCII 0바이트 확인), ps1 은 BOM 있는 UTF-8(PowerShell 5.1 이 한글을 제대로 읽으려면 필요).</span></div>
+        <div class="row"><span class="lbl">부수</span><span class="val">런처에 <strong>중복 실행 감지</strong>를 넣었다. 같은 작업공간을 두 창에서 열면 나중에 저장한 쪽이 앞의 편집을 덮어쓴다. venv 의 <code>pythonw.exe</code> 는 껍데기 프로세스를 하나 더 만들므로 부모가 목록에 있는 것은 빼고 센다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="38" data-s="ok">
+      <div class="ehead"><h3><code>pythonw</code> 는 예외를 조용히 삼킨다</h3>
+        <span class="chip t-ok">해결</span><span class="phase">도구</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">위험</span><span class="val">콘솔 없이 띄우면 traceback 이 갈 곳이 없다. 편집 중에 <strong>아무 일도 안 일어나는데 이유를 모르는</strong> 상태가 된다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val"><code>report_callback_exception</code> 과 <code>sys.excepthook</code> 을 걸어 <code>docs/error.log</code> 에 남기고 화면에도 알린다. 알림에 "작업 중이던 내용은 그대로 있습니다. 저장을 눌러보세요"를 넣었다 — 오류가 나도 라벨이 날아가지 않는다는 걸 알아야 계속할 수 있다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="39" data-s="ok">
+      <div class="ehead"><h3>그린 박스가 자동 선택되어 다음 박스용 클래스 변경이 앞 박스를 오염시켰다</h3>
+        <span class="chip t-ok">해결</span><span class="phase">UI</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">지적</span><span class="val">"클래스를 정한 다음 박스를 그리는 게 맞는 것 같다. 지금은 박스를 그리고 클래스를 입력하는 형식."</span></div>
+        <div class="row"><span class="lbl">실제 버그</span><span class="val"><code>cur_cls</code> 는 이미 그리기에 적용되고 있었다. 문제는 그린 박스가 <strong>자동으로 선택</strong>된다는 것. <code>1</code>로 조끼를 그리고 다음을 위해 <code>2</code>를 누르면 <strong>방금 그린 조끼가 헬멧으로 바뀌었다</strong>.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">그리기·승격 후 선택하지 않는다. 기존 박스를 고치려면 클릭해서 선택 — 클릭은 그 박스를 의도적으로 지목한 것이다. 현재 클래스는 상태바에 항상 표시.</span></div>
+        <div class="row"><span class="lbl">대가</span><span class="val">그린 직후 핸들이 안 뜬다. 크기를 바로 다듬으려면 한 번 클릭해야 한다. 연속으로 그리는 게 훨씬 잦아 이쪽을 택했다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="40" data-s="ok">
+      <div class="ehead"><h3>단축키를 한 손 작업에 맞춤 — 그리고 오타 사고 자리를 옮김</h3>
+        <span class="chip t-ok">해결</span><span class="phase">UI</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">요청</span><span class="val">W/S 로 이미지 이동, 클래스는 1부터.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">W=이전 · S=다음(목록이 세로이므로). 숫자키 1~9 → 클래스 0~8, 0 → 9. 클래스 목록 표기도 <code>(키 1)</code> 로 갱신.</span></div>
+        <div class="row"><span class="lbl">같이 고침</span><span class="val">맨 <code>a</code> 가 <strong>예측 전체 승격</strong>이었다. 왼손이 W/S 위에 있으면 바로 옆이라 오타 한 번에 기각 티어까지 전부 라벨로 쏟아진다. <code>Ctrl+A</code> 로 옮겼다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="41" data-s="fail">
+      <div class="ehead"><h3>이미지의 15.8%가 반사 패딩 — 유령 객체를 만들고 있었다</h3>
+        <span class="chip t-fail">데이터 결함</span><span class="phase">데이터 품질</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">발견</span><span class="val">"이렇게 반사된 이미지가 꽤 보이던데." 화면이 위아래로 쪼개진 것처럼 같은 장면이 거울로 반복됐다. <strong>워터마크까지 뒤집혀</strong> 있어 촬영이 아니라 프로그램의 산물임이 분명했다.</span></div>
+        <div class="row"><span class="lbl">왜 해로운가</span><span class="val">분류에서는 무해하지만 <strong>검출에서는 모순된 지도</strong>가 된다. 가장자리의 조끼가 반사되면 조끼가 하나 더 생기는데 거기엔 라벨이 없다 → "조끼와 똑같이 생긴 이것은 배경이다".</span></div>
+        <div class="row"><span class="lbl">원인 추정</span><span class="val">거울축이 <strong>두 행 사이(반 픽셀)</strong>에 있었다 = <code>BORDER_REFLECT_101</code>. 이는 albumentations <code>PadIfNeeded</code> 의 <strong>기본값</strong>이다. 정사각형을 맞추면서 <code>border_mode</code> 를 지정하지 않은 기본값 사고로 보인다.</span></div>
+        <div class="row"><span class="lbl">순서</span><span class="val">README 는 Roboflow 가 <code>Stretch</code> 만 했다고 적고 있다. 반사는 <strong>업로드 이전</strong>에 이미 들어가 있었다. 리사이즈가 두 번 걸린 셈.</span></div>
+        <div class="row"><span class="lbl">중요</span><span class="val"><strong>학습에 정사각형이 필요해서가 아니다.</strong> ultralytics 는 로딩할 때 회색(114)으로 letterbox 한다. 미리 채울 이유가 없었고, 지금 상태는 패딩을 두 번 하는 셈이다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="42" data-s="ok">
+      <div class="ehead"><h3>반사 검출 임계값을 0 근처로 잡은 것이 오류였다</h3>
+        <span class="chip t-ok">해결</span><span class="phase">도구 / 검출</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">가정</span><span class="val">프로그램이 만든 반사니 픽셀이 거의 일치할 것 → 평균차 2.5 로 설정.</span></div>
+        <div class="row"><span class="lbl">실측</span><span class="val">명백한 반사인데 평균차 <strong>4.6</strong>, 최대차 <strong>47</strong>. 두 가지가 겹쳐서다 — 반 픽셀 축(규약 차이) + <strong>JPEG 재압축</strong>(반사 후 저장, Roboflow 가 640 으로 재인코딩). 0 이 될 수가 없었다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">두 반사 규약을 모두 시험하고 임계값을 실측에 맞춤.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="43" data-s="fail">
+      <div class="ehead"><h3><code>break</code> 하나 때문에 정답 규약을 시험조차 안 했다</h3>
+        <span class="chip t-fail">내 오류</span><span class="phase">도구 / 검출</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">두 규약을 다 보게 고쳤는데도 아는 사례를 계속 놓쳤다.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">1차 필터에서 <strong>첫 규약이 통과하면 <code>break</code></strong> 했다. 정작 맞는 쪽은 두 번째였다 — 2D 평균차 10.6 대 <strong>4.7</strong>.</span></div>
+        <div class="row"><span class="lbl">교훈</span><span class="val">"둘 중 하나만 맞으면 된다"와 "먼저 통과한 것이 정답이다"는 다르다. 값싼 필터를 조기 종료에 쓰면 안 된다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="44" data-s="ok">
+      <div class="ehead"><h3>최대차로 거르면 고주파 사진의 진짜 반사가 걸러진다</h3>
+        <span class="chip t-ok">해결</span><span class="phase">도구 / 검출</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">사례</span><span class="val"><code>00181</code> — 위·아래가 각각 반사된 이미지. 비계·천막처럼 <strong>고주파 무늬</strong>가 많다.</span></div>
+        <div class="row"><span class="lbl">측정</span><span class="val">1D 행 평균 프로파일 일치도 <strong>1.06</strong>(거의 완벽), 2D 평균 8.95, 그런데 <strong>최대차 191</strong>. JPEG 오차는 날카로운 경계에서 크게 튄다 — 픽셀 하나가 190 어긋나는 건 반사가 가짜라서가 아니다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">최대차를 버리고 <strong>상위 99백분위</strong>로 교체. <strong>1D 프로파일 일치도를 주 신호</strong>로 삼음.</span></div>
+        <div class="row"><span class="lbl">효과</span><span class="val">검출률 <span class="delta up">9.8% → 15.8%</span>.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="45" data-s="fail">
+      <div class="ehead"><h3>유령 판정이 한 번만 돌아 라벨이 조용히 사라졌다</h3>
+        <span class="chip t-ok">해결</span><span class="phase">도구 / 안전</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">배경</span><span class="val">GT 가 <strong>반사 영역의 유령 객체까지 라벨</strong>해 둔 것이 확인됐다(총 270개). 안전장치가 "라벨이 있으니 양보"해서 정작 고쳐야 할 이미지를 못 고쳤다. → 띠 안에 <em>완전히</em> 들어간 라벨만 유령으로 보고 지우기로 결정.</span></div>
+        <div class="row"><span class="lbl">버그</span><span class="val"><code>08886</code> 에서 재현. 박스(y 26~106)가 띠 106 기준으로 <strong>유령</strong>이라 건너뛰어졌는데, 다른 박스가 띠를 104 로 줄이자 <strong>유령이 아니게</strong> 됐다. 이미 건너뛴 뒤라 양보를 못 받고, 좌표 변환에서 범위 밖으로 나가 <strong>소리 없이 삭제</strong>됐다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">유령 판정과 띠 축소를 <strong>수렴할 때까지 반복</strong>. 그리고 같은 종류의 사고가 다시 나면 드러나도록 <strong>"예상 밖 삭제" 검사</strong>를 도구에 넣었다 — 유령으로 센 것보다 많이 사라지면 경고하고 매니페스트에 기록한다.</span></div>
+        <div class="row"><span class="lbl">왜 위험한가</span><span class="val">이미지는 멀쩡해 보이는데 <strong>라벨만 조용히 줄어드는</strong> 종류의 버그다. 학습 결과가 나빠진 뒤에야 알아챘을 것이다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="46" data-s="fail">
+      <div class="ehead"><h3>채점표에 답이 적혀 있었다 — 스플릿을 넘나드는 같은 사진</h3>
+        <span class="chip t-ok">해결</span><span class="phase">데이터 / 누출</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">발견</span><span class="val">사장님이 valid 를 넘겨보다 <strong>train 에서 본 사진이 또 나온다</strong>고 지적. 도구가 아니라 <strong>사람 눈이 먼저 잡았다</strong>.</span></div>
+        <div class="row"><span class="lbl">왜 못 잡았나</span><span class="val">9,526장의 SHA-256 을 전부 떠도 <strong>바이트가 같은 파일은 0장</strong>이다. Roboflow 가 전량 640 으로 재인코딩했다. 파일명도 연번이라 중복이 없다. <strong>해시로는 원리적으로 못 잡는다.</strong></span></div>
+        <div class="row"><span class="lbl">실측</span><span class="val">dHash + 픽셀 확인으로 같은 사진 무리 <strong>707개</strong>, 그중 스플릿을 넘는 것 <strong>334개</strong>. <strong>valid 12.0% · test 10.9%</strong> 가 train 에 쌍둥이를 갖고 있었다.</span></div>
+        <div class="row"><span class="lbl">영향</span><span class="val">기존 모델 4개를 재채점 — 누출분이 깨끗한 분보다 mAP50 <strong>+0.021~+0.069</strong> 높다(8회 전부 같은 방향). 전체 점수 거품은 <strong>−0.003~−0.009</strong>. 다만 갈라 보니 <strong>대부분 암기가 아니라 난이도</strong>였다 — 중복되는 스톡 컷이 원래 쉬운 사진이다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val"><code>dedup_dataset.py</code> 신규 · train 우선 규칙으로 평가셋 쪽 사본 <strong>358장 제외</strong> → <code>db/vest-helmet_crop_dedup</code>. train 은 한 장도 안 잃음. 남긴 라벨 9,168개 SHA-256 대조 불일치 0.</span></div>
+        <div class="row"><span class="lbl">교훈</span><span class="val">웹에서 긁은 데이터셋은 이 문제를 거의 항상 갖고 있고, <strong>파일 해시 검사는 통과한다</strong>. 새 도메인에서도 <strong>맨 먼저</strong> 돌릴 검사다. 그리고 계측 장치를 의심하는 데 가장 좋은 도구는 여전히 <strong>사람이 직접 넘겨보는 것</strong>이었다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="47" data-s="fail">
+      <div class="ehead"><h3>베이지 바탕에 흰 글씨 — 대상·스플릿·클래스가 통째로 안 보였다</h3>
+        <span class="chip t-ok">해결</span><span class="phase">도구 / UI</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">시작 메뉴와 툴바의 콤보박스 값(<code>vest-helmet</code> · <code>train</code> · <code>db 라벨</code> · <code>sam2.1_b.pt</code>)이 <strong>화면에서 사라져 있었다</strong>. 어두운 테마인데 그 자리만 밝은 베이지 바탕이고 글씨는 흰색.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val"><code>style.configure()</code> 는 <strong>'보통' 상태의 색만</strong> 정한다. clam 테마는 상태별 기본값을 따로 갖고 있고 그게 전부 밝다 — <code>disabled #dcdad5</code> · <code>active #eeebe7</code>. <strong>둘 다 베이지다.</strong> 이 앱의 콤보박스는 전부 <code>state="readonly"</code> 라 늘 그 경로를 탔다.</span></div>
+        <div class="row"><span class="lbl">진짜 범위</span><span class="val">콤보박스만의 문제가 아니었다. <strong>루트 스타일 <code>"."</code> 의 상태맵을 안 덮은 것</strong>이라, 체크버튼·라벨도 마우스를 올리면(<code>active</code>) 같은 일이 난다. 검사해 보니 <strong>대비 1.05:1</strong> 짜리 조합까지 있었다 — 글자와 바탕이 사실상 같은 색.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">뿌리에서 <code>st.map(".")</code> 로 <code>disabled/active/pressed</code> 를 전부 못박고, 콤보박스는 <code>readonly</code> 의 <code>selectbackground/selectforeground</code> 까지 명시(readonly 콤보는 값을 '선택된 텍스트'로 그린다). 드롭다운 목록은 ttk 가 아닌 tk Listbox 라 옵션 데이터베이스로 따로 칠했다.</span></div>
+        <div class="row"><span class="lbl">덤</span><span class="val">클래스 필터·레이어 목록이 선택색을 안 넘겨 <strong>윈도우 기본 파랑</strong>을 쓰고 있던 것도 같이 드러났다. tk 위젯 기본값을 <code>option_add</code> 로 못박아 앞으로 만드는 다이얼로그까지 덮이게 했다.</span></div>
+        <div class="row"><span class="lbl">교훈</span><span class="val">눈으로 보는 검증으로는 못 잡는다. 어떤 상태는 <strong>마우스를 올려야만</strong> 나타나고, 다이얼로그를 하나 추가할 때마다 다시 생긴다. → <code>check_contrast.py</code> 로 <strong>105개 조합을 기계로 훑는다</strong>. 현재 3.0:1 미만 0건.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="48" data-s="fail">
+      <div class="ehead"><h3>낙서처럼 보이던 마스크는 결함이 아니라 그리는 방식이었다</h3>
+        <span class="chip t-fail">내 오진</span><span class="phase">데이터 / seg</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">프롬프트 섭동 안정성이 낮은 마스크들을 뽑아 봤더니 폴리곤이 물체 <strong>안쪽에서 갈지자로 마구 엉켜</strong> 있었다. 점이 최대 <strong>4,874개</strong>. 명백한 불량으로 보였다.</span></div>
+        <div class="row"><span class="lbl">내 진단</span><span class="val">ultralytics 의 <code>masks2segments</code> 기본값이 <code>strategy="all"</code> 이고, 마스크가 조각나면 <code>merge_multi_segment</code> 가 조각들을 <strong>선으로 이어 붙여</strong> 폴리곤 하나로 만든다. 메시 소재 조끼가 조각나면서 그 연결선이 낙서가 된 것이라고 봤다. "게이트로 버릴 게 아니라 변환을 고치면 된다"고 했다.</span></div>
+        <div class="row"><span class="lbl">측정</span><span class="val">변환 방식 4가지를 <strong>충실도</strong>(폴리곤을 다시 칠했을 때 SAM 원본 마스크를 재현하는 IoU · GT 불필요)로 비교. 402개 객체.
+          <br><code>all</code> 중앙값 <strong>0.9827</strong> · 0.8미만 <strong>1.0%</strong>
+          <br><code>largest</code> 0.9822 · 0.8미만 9.0%
+          <br><code>close</code>(구멍 메우기) 0.9818 · 0.8미만 8.7%
+          <br><code>close_all</code> 0.9820 · 0.8미만 1.0%
+          <br><strong>현재 방식이 가장 충실했다.</strong> 조각을 버리는 방식이 오히려 나빴다.</span></div>
+        <div class="row"><span class="lbl">진짜 원인</span><span class="val">학습은 폴리곤을 <strong>칠해서</strong> 쓴다(<code>polygon2mask</code> → <code>fillPoly</code>). 연결선은 두께가 없어 칠하면 사라진다. 같은 폴리곤을 윤곽선과 채움으로 나란히 그려 보니 <strong>채운 쪽은 조끼를 정확히 덮고 있었다</strong>. 낙서는 <strong>윤곽선으로 그렸을 때만</strong> 보이는 것이었다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">데이터는 그대로 두고 <strong>스튜디오가 폴리곤을 항상 칠해서 표시</strong>하도록 바꿨다. 박스는 종전대로 '채우기' 옵션을 따른다. 겸사겸사 출처 태그가 <code>??B</code> 로 보이던 것도 고쳤다 — 가운데점 <code>·</code> 이 UTF-8 2바이트라 <code>cv2.putText</code> 가 물음표 <strong>두 개</strong>를 찍고 있었다(ASCII <code>[B]</code> 로 교체).</span></div>
+        <div class="row"><span class="lbl">교훈</span><span class="val">보기 나쁜 것과 값이 나쁜 것은 다르다. <strong>학습이 실제로 무엇을 먹는지</strong>(칠한 마스크)를 기준으로 봐야 했다. 눈으로 보고 결함이라 단정한 뒤 고칠 뻔했고, 고쳤다면 <strong>더 나쁜 라벨</strong>이 됐을 것이다(<code>close</code>·<code>largest</code> 는 0.8미만이 9배).</span></div>
+        <div class="row"><span class="lbl">정정</span><span class="val"><strong>"그러니 지그재그는 무해하다"까지 간 것은 지나쳤다.</strong> 사장님이 <code>00039</code> 의 아래쪽을 짚어 다시 재보니, 폴리곤이 SAM 마스크를 충실히 옮긴 것은 맞지만 <strong>그 SAM 마스크 자체가 나쁜 경우가 많았다</strong>. 문제 49 참조. 지그재그는 <em>고칠 대상</em>이 아니라 <em>나쁜 마스크의 표시</em>다.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="49" data-s="ok">
+      <div class="ehead"><h3>지그재그는 증상이었다 — 공짜로 얻는 경고 신호</h3>
+        <span class="chip t-ok">해결</span><span class="phase">데이터 / seg</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">지적</span><span class="val">사장님이 <code>00039</code> 의 아래쪽을 보고 "마스크가 제대로 안 잡히는데 학습에 영향이 없겠냐"고 물었다. 앞서 나는 지그재그를 그리기 문제로만 결론지었다.</span></div>
+        <div class="row"><span class="lbl">뜯어보니</span><span class="val">그 객체(점 221개)의 <strong>폴리곤 충실도는 0.91</strong> — 폴리곤은 SAM 마스크를 제대로 옮겼다. 그런데 <strong>SAM 마스크 자체</strong>가 조끼 옆의 초록 자재를 같이 먹고 있었다. 즉 인코딩은 멀쩡하고 원본이 틀렸다.</span></div>
+        <div class="row"><span class="lbl">측정</span><span class="val">라벨 마스크를 <strong>학습된 seg 모델의 예측과 대조</strong>했다(학습분 150장 제외, 300장 999객체). 모델이 탐지한 것만 보면:
+          <br>점 ≤50 &nbsp; n=737 · IoU 중앙값 <strong>0.884</strong> · 0.5미만 4.8%
+          <br>점 51~200 n=225 · IoU 중앙값 0.780 · 0.5미만 15.9%
+          <br>점 &gt;200 &nbsp; n=&nbsp;37 · IoU 중앙값 <strong>0.544</strong> · 0.5미만 <strong>47.2%</strong>
+          <br><strong>점이 많을수록 라벨이 모델과 어긋난다.</strong> 단조롭다.</span></div>
+        <div class="row"><span class="lbl">교란 확인</span><span class="val">지그재그는 큰 물체(면적 중앙값 52,137 vs 6,323 px)에 몰리므로 "그냥 어려운 물체라 그렇다"일 수 있다. <strong>면적을 맞춰도 차이가 남았다</strong> — 20k px 초과 구간 안에서 지그재그 0.549 vs 일반 0.825 (<strong>−0.276</strong>). 탐지율은 오히려 지그재그가 높다(97.3%) — 모델이 못 찾는 게 아니라 <strong>찾고서 다르게 그린다</strong>.</span></div>
+        <div class="row"><span class="lbl">누가</span><span class="val">지그재그 36/36 이 전부 <code>reflective_jacket</code>, 헬멧은 0개. 메시 소재 조끼가 조각나기 때문이다. 헬멧은 단단한 덩어리라 안 생긴다.</span></div>
+        <div class="row"><span class="lbl">규모</span><span class="val">전량 31,612개 중 점&gt;200 이 4.17% = 약 <strong>1,318개</strong>. 그중 47%가 크게 어긋나므로 <strong>약 622개 (전체의 1.97%)</strong> 가 실질 불량 후보다.</span></div>
+        <div class="row"><span class="lbl">값어치</span><span class="val"><strong>폴리곤 점 개수는 공짜 신호다.</strong> 안정성 검사는 추론 3배(36분)가 들지만 점 개수는 라벨 파일만 읽으면 된다(수 초). 그러면서 이 실패 유형을 4.17% 로 좁혀 준다.</span></div>
+        <div class="row"><span class="lbl">고쳐 봤으나</span><span class="val">세 가지를 지그재그 60개에 걸어 봤다 — 자세한 것은 문제 50.</span></div>
+      </div>
+    </div>
+
+    <div class="entry" data-n="50" data-s="fail">
+      <div class="ehead"><h3>지그재그를 고치는 세 방법 — 전부 실패</h3>
+        <span class="chip t-warn">미해결</span><span class="phase">데이터 / seg</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">시도</span><span class="val">지그재그 객체 60개(학습분 제외)에 세 가지를 걸고 같은 자로 비교.
+          <br><code>close</code> 모폴로지 닫기 (사장님 1단계)
+          <br><code>crop</code> 박스 둘레를 잘라 SAM 에 재질의 — SAM 이 1024 로 확대하므로 물체가 인코더 안에서 2~3배 커진다
+          <br><code>crop_lanczos</code> 자른 뒤 Lanczos 로 1024 까지 미리 키워서 넣음</span></div>
+        <div class="row"><span class="lbl">결과</span><span class="val">
+          <br><code>base</code> 점 301 · 여전히&gt;200 100% · 안정성 0.719 · 모델IoU <strong>0.494</strong>
+          <br><code>close</code> 점 228 · 60% · 0.714 · 0.491
+          <br><code>crop</code> 점 250 · 60% · 0.685 · 0.514
+          <br><code>crop_lanczos</code> 점 217 · 53% · 0.775 · <strong>0.521</strong>
+          <br><strong>점 개수는 절반으로 줄었는데 불일치는 그대로다.</strong></span></div>
+        <div class="row"><span class="lbl">짝지어 보니</span><span class="val">중앙값만 보면 <code>crop_lanczos</code> 가 셋 다 낫지만, 객체별로 짝지으면 <strong>개선 16 · 악화 18 · 무변 26</strong> — 사실상 동전 던지기다. 평균 +0.011 은 개선폭이 조금 더 클 뿐이다. 전량에 걸면 절반은 나빠진다.</span></div>
+        <div class="row"><span class="lbl">뜻</span><span class="val">인코딩을 고쳐도 안 나아진다는 것은 <strong>어려움이 물체 자체에 있다</strong>는 뜻이다 — 메시 조끼, 가림, 겹친 사람들. SAM 을 다시 물어봐도 같은 어려움을 만난다. 지그재그는 그 어려움의 <em>표시</em>일 뿐 원인이 아니다.</span></div>
+        <div class="row"><span class="lbl">자의 한계</span><span class="val">기준으로 쓴 모델은 150장짜리(마스크 mAP50 0.751)다. <code>base</code> 의 모델IoU 0.494 가 낮은 것이 <strong>라벨이 나빠서인지 모델이 약해서인지 이 자로는 못 가린다.</strong> 그래서 "지그재그 = 불량" 이라고 단정하지 않는다.</span></div>
+        <div class="row"><span class="lbl">결정</span><span class="val"><strong>자동 수정은 여기서 멈춘다.</strong> 실질 불량 후보는 전체의 약 2%(622개)이고, 그 라벨을 포함한 채 학습한 seg 모델이 박스 mAP50-95 를 <strong>+0.040</strong> 올렸다. 2% 의 잡음이 학습을 막고 있지 않다. 남은 선택지는 사람이 보는 것뿐인데, 지금은 valid/test 답지 순도가 더 급하다.</span></div>
+        <div class="row"><span class="lbl">왜 실험으로 못 끝내나</span><span class="val">"지그재그를 빼면 더 좋아지나"를 직접 학습으로 재려 했으나 <strong>검정력이 없다</strong>. 150장 안에 지그재그가 553개 중 약 23개라 빼고 학습해도 차이가 시드 분산에 묻힌다. 500장으로 늘려도 비율은 4% 그대로다. 지그재그가 많은 이미지만 모으면 데이터셋 성격이 바뀌어 또 다른 교란이 생긴다.</span></div>
+      </div>
+    </div>
+
+    <!-- 51 -->
+    <div class="entry" data-n="51" data-s="fail">
+      <div class="ehead"><h3>학습 시간을 장수에 비례해 추정 — "500장이면 35분"이 실제로는 12분</h3>
+        <span class="chip t-fail">내 오류</span><span class="phase">연속형 / 설계</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">연속형 설계에서 "n 이 커지면 학습이 느려져 모델 갱신이 뜸해진다"고 보고, <strong>매번 처음부터 학습</strong>과 <strong>이전 버전에서 이어서 학습</strong> 두 트랙으로 나누자고 제안했다.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">150장 10.2분이라는 실측 하나를 놓고 장수에 <strong>비례</strong>해 늘렸다. 학습 시간이 무엇으로 이뤄져 있는지 재보지 않았다.</span></div>
+        <div class="row"><span class="lbl">실측</span><span class="val">에폭 시간을 <code>val</code> 켜고 끄고로 분해하니 <strong>150장에서 검증이 80%</strong>였다. 학습 계산은 <span class="num">0.66초/에폭 + 장당 5.6ms</span> 뿐이고 검증 5.8초는 <strong>학습 장수와 무관</strong>하다(valid 1258장 고정). 그래서 50장 9.3분 · 150장 9.9분 · <strong>500장 12.2분</strong>.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">두 트랙 분리안을 <strong>철회</strong>했다. 500장까지 처음부터 학습해도 12분이면 재현성과 기존 n-곡선 호환을 공짜로 얻는다. n=2,000 근처에서 장수가 지배하기 시작하므로 그때 다시 잰다.</span></div>
+        <div class="row"><span class="lbl">교훈</span><span class="val">한 점을 기울기로 늘리면 그것은 측정이 아니라 가정이다. 분해하기 전에는 무엇이 지배하는지 알 수 없다.</span></div>
+      </div>
+    </div>
+
+    <!-- 52 -->
+    <div class="entry" data-n="52" data-s="ok">
+      <div class="ehead"><h3>검증 벤치가 윈도우 워커 spawn 에 오염돼 "GPU 설정 탓"으로 읽을 뻔했다</h3>
+        <span class="chip t-ok">교정</span><span class="phase">연속형 / 계측</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">검증을 빠르게 하려고 <code>model.val()</code> 설정을 훑었는데 <strong>무엇을 바꿔도 23초에서 안 움직였다</strong>. batch 64도, <code>half</code>도, <code>conf</code>도, <code>max_det</code>도. batch 128은 오히려 <span class="num">106초</span>로 4.6배 느려졌다.</span></div>
+        <div class="row"><span class="lbl">오독할 뻔한 것</span><span class="val">"GPU 가 이미 포화라 검증은 못 줄인다"로 결론 낼 뻔했다.</span></div>
+        <div class="row"><span class="lbl">원인</span><span class="val">워커 수를 바꿔보니 <code>workers=0</code> <span class="num">8.35초</span> · 2 <span class="num">10.52초</span> · 4 <span class="num">15.17초</span> · 8 <span class="num">24.45초</span> — <strong>워커 하나당 정확히 +2초</strong>. 리눅스 fork 와 달리 윈도우 spawn 은 워커마다 파이썬과 torch 를 새로 import 한다. 8초짜리 검증에 spawn 16초를 얹고 있었다.</span></div>
+        <div class="row"><span class="lbl">단, 학습 중에는 해당 없음</span><span class="val">학습 루프는 검증 로더를 한 번 만들어 80에폭 재사용한다. 그래서 학습 중 검증은 <span class="num">6.15초</span>(205 img/s)로 이미 spawn 이 빠진 값이다. <code>train_model.py</code> 의 최종 채점은 원래부터 <code>workers=0</code> 이었다.</span></div>
+        <div class="row"><span class="lbl">부수 결론</span><span class="val">추론에서 4배를 냈던 <strong>GPU 디코드는 검증에서 의미가 없다</strong>. 디코드 몫이 4.5%뿐이고, 워커를 늘려 디코드를 병렬화해도 안 빨라지는 것이 그 증거다.</span></div>
+      </div>
+    </div>
+
+    <!-- 53 -->
+    <div class="entry" data-n="53" data-s="fail">
+      <div class="ehead"><h3>두 조건만 보고 인과를 갈랐다 — "검증 주기 늘리기는 공짜"</h3>
+        <span class="chip t-fail">내 오류</span><span class="phase">연속형 / 계측</span></div>
+      <div class="body">
+        <div class="row"><span class="lbl">증상</span><span class="val">검증셋 400장·매에폭과 400장·5에폭마다가 <strong>둘 다 mAP50 0.8124</strong> 로 같길래, "0.0008 손해는 전부 검증셋 축소분이고 주기 늘리기는 공짜"라고 문서 3곳에 적었다.</span></div>
+        <div class="row"><span class="lbl">뒤집은 것</span><span class="val">세 번째 조건(<strong>검증 1258장 전량 · 5에폭마다</strong>)이 끝나자 그것도 <strong>0.8124</strong> 였다. 검증셋을 안 줄이고 주기만 늘려도 같은 손해가 난다.</span></div>
+        <div class="row"><span class="lbl">진짜 원인</span><span class="val">기준만 <code>epoch 79</code> 를 골랐고 나머지 셋은 전부 <code>epoch 80</code> 을 골랐다. 후반 곡선이 평평해 79와 80이 사실상 같다. <strong>0.0008 은 어느 설정을 바꿨느냐와 무관하게 best 에폭 선택이 한 칸 옮겨간 값</strong>이고, 원인을 둘로 나눌 수 없다.</span></div>
+        <div class="row"><span class="lbl">조치</span><span class="val">계획 문서·벤치 도구 docstring·메모리 세 곳을 정정. 결론(<code>--val-fast-n 400 --val-period 5</code>)은 그대로다 — 3.0분으로 가장 빠르고 손해는 어느 조건이든 같은 0.0008 이다.</span></div>
+        <div class="row"><span class="lbl">교훈</span><span class="val">두 점으로 인과를 나누지 말 것. 요인이 둘이면 조건도 넷이어야 한다.</span></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══════════ 4. 성공 기준 ══════════ -->
+<section>
+  <div class="shead"><span class="n">04</span><h2>합의가 필요한 성공 기준</h2></div>
+  <p class="lede">가상 시나리오를 같은 비용 함수로 계산하면 목표선이 어디여야 하는지 드러난다.</p>
+
+  <div class="tw"><table>
+    <caption>Recall/Precision 조합별 노동 절감률 · 146박스 기준</caption>
+    <thead><tr><th>라벨러 품질</th><th>편집 비용</th><th>기준선 대비</th><th>절감</th><th>판정</th></tr></thead>
+    <tbody>
+      <tr class="dim"><td>현재 구조화 VLM (R .44 / P .47)</td><td class="num">607 s</td><td class="num">0.83</td><td class="num">17%</td><td>미달</td></tr>
+      <tr class="dim"><td>R 0.6 / P 0.6</td><td class="num">442 s</td><td class="num">0.61</td><td class="num">39%</td><td>미달</td></tr>
+      <tr><td>R 0.7 / P 0.7</td><td class="num">355 s</td><td class="num">0.49</td><td class="num">51%</td><td>실용 최소선</td></tr>
+      <tr class="hl"><td>R 0.8 / P 0.8</td><td class="num">263 s</td><td class="num">0.36</td><td class="num">64%</td><td>목표</td></tr>
+      <tr><td>R 0.9 / P 0.9</td><td class="num">166 s</td><td class="num">0.23</td><td class="num">77%</td><td>이상적</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--ok)">
+    <div class="ct">제안 — 두 개의 관문</div>
+    <p><strong>① 효율 관문.</strong> 편집 비용이 수동 기준선의 <strong>35% 이하</strong> (= 노동 65% 절감).
+    Recall·Precision 약 0.8 지점에 해당한다. 51% 절감(R/P 0.7)을 실용 최소선으로 둔다.</p>
+    <p><strong>② 안전 관문.</strong> 사람 검수 없이 자동 승인되는 고신뢰 구간의 <strong>Precision ≥ 0.95</strong>.
+    이 구간은 사람 눈을 거치지 않고 데이터셋에 들어가므로, 여기서 새는 오류는 조용히 정답지를 오염시킨다.
+    효율보다 이쪽이 상위 제약이다.</p>
+  </div>
+</section>
+
+<!-- ══════════ 4.5 P1 / P2 결과 ══════════ -->
+<section>
+  <div class="shead"><span class="n">05</span><h2>P1 — 학습 없는 라벨러의 천장</h2></div>
+  <p class="lede">GT 를 한 줄도 쓰지 않는 zero-shot 경로(출처 <code>D</code>). YOLO-World 로 프롬프트 쌍 30가지를 격자 탐색했다.</p>
+
+  <div class="tw"><table>
+    <caption>zero-shot 대 VLM · 동일 50장 · 동일 IoU 채점</caption>
+    <thead><tr><th>방식</th><th>F1</th><th>노동 절감</th><th>속도</th></tr></thead>
+    <tbody>
+      <tr class="dim"><td>Gemma VLM 구조화출력</td><td class="num">0.456</td><td class="num">17%</td><td class="num">0.11 img/s</td></tr>
+      <tr><td>YOLO-World zero-shot</td><td class="num">0.493</td><td class="num">25%</td><td class="num">28 img/s</td></tr>
+      <tr class="dim"><td>+ 박스 축소 보정</td><td class="num">0.517</td><td class="num">25%</td><td class="num">28 img/s</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="lede">프롬프트 30쌍이 모두 F1 0.376–0.493 좁은 띠에 갇혔고 절감률은 19–26% 로 움직이지 않았다.
+  <strong>프롬프트는 지렛대가 아니다.</strong></p>
+
+  <div class="bars">
+    <div class="bar"><span class="bl">&lt;32px</span><span class="track"><span class="fill" style="width:40%"></span></span><span class="bv">0.400</span></div>
+    <div class="bar"><span class="bl">32–64px</span><span class="track"><span class="fill" style="width:48.5%"></span></span><span class="bv">0.485</span></div>
+    <div class="bar"><span class="bl">64–128px</span><span class="track"><span class="fill" style="width:38.1%"></span></span><span class="bv">0.381</span></div>
+    <div class="bar"><span class="bl">≥128px</span><span class="track"><span class="fill" style="width:31.8%"></span></span><span class="bv">0.318</span></div>
+  </div>
+  <p class="lede">크기 곡선이 <strong>평평하다</strong>. VLM 이 0.000→0.803 으로 크기에 종속됐던 것과 정반대 —
+  소형 객체 문제는 검출기 구조(FPN, stride-8)로 해소됐고, 실패는 크기와 무관한 균일 실패다.</p>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">진단 — 조끼 실패의 정체는 검출이 아니라 규약</div>
+    <p>GT 조끼의 <strong>92.4%</strong> 에 겹치는 예측이 존재한다. 못 찾는 게 아니다.
+    중앙 IoU 는 <strong>0.456</strong> 으로 임계값 0.5 에 아슬아슬하게 미달하고,
+    예측 박스는 GT 보다 <strong>면적 1.85배</strong> 크다. 모델은 '사람 상체'를, GT 는 '조끼'를 그린다.</p>
+    <p>단일 축소 계수로 보정을 시도했으나 F1 0.493 → 0.517, 절감은 25% 그대로.
+    크기 비율의 편차가 커서(15% 는 3배 초과) <strong>상수 보정이 통하지 않는다</strong>.
+    규약은 손으로 만든 규칙이 아니라 예시로만 가르칠 수 있다 — 이것이 P2 의 근거가 되었다.</p>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><span class="n">06</span><h2>P2 — 학습 곡선</h2></div>
+  <p class="lede">train 스플릿에서 무작위로 뽑은 이미지에 GT 를 복사해 사람 주석을 시뮬레이션(출처 <code>A</code>)하고,
+  매 라운드 동일 사전학습 가중치에서 YOLO11s 를 새로 학습해 봉인 평가셋 204장에서 채점했다.
+  증분은 등차 50 — 라운드당 시간이 거의 일정해(188→434초) 등비의 컴퓨트 이점이 사라졌고,
+  증분이 같으면 곡선이 곧바로 '50장당 한계이득' 으로 읽힌다.</p>
+
+  <div class="tw"><table>
+    <caption>사람 편집 비용 기준 학습 곡선 · 수동 기준선 3,080초</caption>
+    <thead><tr><th>학습 장수</th><th>F1</th><th>비용</th><th>노동 절감</th><th>한계이득</th><th>자동승인 커버</th></tr></thead>
+    <tbody>
+      <tr class="dim"><td>0 (zero-shot)</td><td class="num">0.517</td><td class="num">—</td><td class="num">25.0%</td><td class="num">—</td><td class="num">헬멧만 33.8%</td></tr>
+      <tr><td>50</td><td class="num">0.579</td><td class="num">1,986 s</td><td class="num">35.5%</td><td class="num">—</td><td class="num">22.2%</td></tr>
+      <tr><td>100</td><td class="num">0.707</td><td class="num">1,454 s</td><td class="num">52.8%</td><td class="num">+17.3%p</td><td class="num">41.7%</td></tr>
+      <tr class="hl"><td>150 — 목표 달성</td><td class="num">0.775</td><td class="num">1,041 s</td><td class="num">66.2%</td><td class="num">+13.4%p</td><td class="num">52.4%</td></tr>
+      <tr><td>200</td><td class="num">0.806</td><td class="num">890 s</td><td class="num">71.1%</td><td class="num">+4.9%p</td><td class="num">62.8%</td></tr>
+      <tr><td>250</td><td class="num">0.798</td><td class="num">850 s</td><td class="num">72.4%</td><td class="num">+1.3%p</td><td class="num">67.4%</td></tr>
+      <tr><td>300</td><td class="num">0.814</td><td class="num">799 s</td><td class="num">74.1%</td><td class="num">+1.7%p</td><td class="num">66.4%</td></tr>
+      <tr><td>350</td><td class="num">0.850</td><td class="num">742 s</td><td class="num">75.9%</td><td class="num">+1.9%p</td><td class="num">72.1%</td></tr>
+      <tr><td>400</td><td class="num">0.840</td><td class="num">738 s</td><td class="num">76.0%</td><td class="num">+0.1%p</td><td class="num">74.0%</td></tr>
+      <tr class="hl"><td>500</td><td class="num">0.867</td><td class="num">601 s</td><td class="num">80.5%</td><td class="num">+4.4%p</td><td class="num">79.1%</td></tr>
+      <tr><td>600</td><td class="num">0.853</td><td class="num">590 s</td><td class="num">80.8%</td><td class="num">+0.4%p</td><td class="num">79.7%</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="rules">
+    <div class="rule-row"><span class="tag t-ok">51%</span>
+      <div>실용 최소선 도달 — <strong>100장</strong></div></div>
+    <div class="rule-row"><span class="tag t-ok">65%</span>
+      <div>목표 도달 — <strong>150장</strong> (사람 작업 약 27분)</div></div>
+    <div class="rule-row"><span class="tag t-ok">P≥.95</span>
+      <div>안전 관문(자동승인 티어) — <strong>50장부터</strong> 성립, 커버리지는 500장에서 79.1%</div></div>
+  </div>
+
+  <div class="call" style="--mark:var(--fail)">
+    <div class="ct">이 숫자를 읽을 때의 단서</div>
+    <p><strong>시뮬레이션이다.</strong> 사람 대역을 GT 로 썼으므로 보정이 완벽했다.
+    실제 사람은 실수하고 애매한 경계에서 흔들리므로 현실 수치는 이보다 낮다.</p>
+    <p><strong>무작위 선별이다.</strong> 액티브 러닝을 아직 붙이지 않았다.
+    200–400 구간에서 한계이득이 +0.1~1.9%p 로 죽는 것은 무작위가 이미 잘하는 것과 비슷한 표본만
+    계속 뽑는 증상으로 보인다. 같은 장수로 더 갈 수 있는지가 다음 질문이다.</p>
+    <p><strong>같은 분포다.</strong> train 에서 뽑아 valid 에서 채점했다. '150장' 은 이 데이터셋 난이도에
+    한정된 숫자이며, 새 도메인으로 이식되는 것은 숫자가 아니라 <strong>등차 50 으로 무릎을 찾는 절차</strong>다.</p>
+  </div>
+</section>
+
+<!-- ══════════ P2b ══════════ -->
+<section>
+  <div class="shead"><span class="n">07</span><h2>P2b — 액티브 러닝은 이기지 못했다</h2></div>
+  <p class="lede">무작위 곡선과 <strong>단 하나만</strong> 다른 실험: '다음 50장을 무엇으로 고르는가'.
+  평가셋·모델·에폭·시드 동일. 1라운드는 같은 무작위 50장에서 출발해(mAP50 0.5817 완전 재현)
+  이후만 불확실도 + 다양성(FPS) 으로 선별했다.</p>
+
+  <div class="tw"><table>
+    <caption>사람 편집 비용 기준 · 무작위 대 액티브러닝</caption>
+    <thead><tr><th>누적 장수</th><th>무작위 절감</th><th>AL 절감</th><th>차이</th><th>무작위 자동승인</th><th>AL 자동승인</th></tr></thead>
+    <tbody>
+      <tr class="dim"><td>50 (콜드스타트 공유)</td><td class="num">35.5%</td><td class="num">35.5%</td><td class="num">±0.0p</td><td class="num">22.2%</td><td class="num">22.2%</td></tr>
+      <tr><td>100</td><td class="num">52.8%</td><td class="num">54.9%</td><td class="num">+2.1p</td><td class="num">41.7%</td><td class="num">38.0%</td></tr>
+      <tr><td>150</td><td class="num">66.2%</td><td class="num">63.8%</td><td class="num">−2.4p</td><td class="num">52.4%</td><td class="num">53.2%</td></tr>
+      <tr><td>200</td><td class="num">71.1%</td><td class="num">67.8%</td><td class="num">−3.3p</td><td class="num">62.8%</td><td class="num">54.7%</td></tr>
+      <tr><td>250</td><td class="num">72.4%</td><td class="num">68.0%</td><td class="num">−4.4p</td><td class="num">67.4%</td><td class="num">67.4%</td></tr>
+      <tr><td>300</td><td class="num">74.1%</td><td class="num">72.2%</td><td class="num">−1.8p</td><td class="num">66.4%</td><td class="num">66.9%</td></tr>
+      <tr><td>350</td><td class="num">75.9%</td><td class="num">73.2%</td><td class="num">−2.7p</td><td class="num">72.1%</td><td class="num">69.3%</td></tr>
+      <tr><td>400</td><td class="num">76.0%</td><td class="num">72.8%</td><td class="num">−3.2p</td><td class="num">74.0%</td><td class="num">63.8%</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sh3">왜 졌는가 — 네 가지 가설과 검증</h3>
+  <div class="rules">
+    <div class="rule-row"><span class="tag t-ok">확인</span>
+      <div><strong>무작위가 아직 천장에 닿지 않았다.</strong> mAP50 이 200→600 구간에서 0.868→<strong>0.915</strong> 로 계속 상승 중이고,
+      train 6,681장 중 <strong>9%만</strong> 사용했다. 액티브 러닝의 존재 이유는 "무작위가 중복을 뽑아 낭비한다" 인데,
+      아직 중복이 발생하지 않았다. <em>낭비가 없는데 낭비를 줄이려 한 셈.</em></div></div>
+    <div class="rule-row"><span class="tag t-ok">확인</span>
+      <div><strong>cold start.</strong> 50장짜리 모델(mAP50 0.58)의 불확실도는 신호가 아니라 잡음이다.
+      선발 불확실도가 라운드 내내 0.48~0.63 로 유지되는 동안 풀 평균은 0.416→0.235 로 떨어졌다 —
+      AL 이 갈수록 <strong>비전형적인 꼬리</strong>만 골라내고 있었다는 뜻.</div></div>
+    <div class="rule-row"><span class="tag t-warn">부분</span>
+      <div><strong>배치가 좁다.</strong> 6,631장에서 50장이면 <strong>상위 0.75%</strong> 만 취하는 극단적 절단.
+      배치가 컸다면 덜 극단적이었을 것. (역설: 작은 배치는 모델이 신선해 유리하다고 앞서 유도했는데,
+      선별을 극단으로 밀어붙이는 반대 효과가 함께 있었다.)</div></div>
+    <div class="rule-row"><span class="tag t-fail">미해결</span>
+      <div><strong>표본 부족.</strong> AL 은 시드 1회만 돌렸다. 확정하려면 3회 반복이 필요하다(약 2시간).</div></div>
+  </div>
+
+  <h3 class="sh3">시드 분산 — n=200 을 4회 반복</h3>
+  <div class="tw"><table>
+    <thead><tr><th>시행</th><th>mAP50</th><th>절감률</th></tr></thead>
+    <tbody>
+      <tr><td>무작위 seed 0</td><td class="num">0.8677 (최고)</td><td class="num">71.1%</td></tr>
+      <tr><td>무작위 seed 1</td><td class="num">0.8431</td><td class="num">68.8%</td></tr>
+      <tr><td>무작위 seed 2</td><td class="num">0.8520</td><td class="num">71.7%</td></tr>
+      <tr><td>무작위 seed 3</td><td class="num">0.8559</td><td class="num">73.0%</td></tr>
+      <tr class="hl"><td>무작위 평균 (σ)</td><td class="num">0.8547 (0.0088)</td><td class="num">71.1% (1.8%p)</td></tr>
+      <tr class="dim"><td>액티브러닝</td><td class="num">0.8372</td><td class="num">67.8% · z=−1.87</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">정직한 판정</div>
+    <p>AL 은 무작위 4회 시행 <strong>전부보다 낮았다</strong>(67.8% vs 최저 68.8%). 방향은 일관되게 열세다.
+    그러나 표본 4 대 1 에서 z=−1.87, <strong>p≈0.16</strong> — 통상 유의수준에 못 미친다.
+    정확한 진술은 "AL 이 나쁘다" 가 아니라 <strong>"AL 이 낫다는 증거가 없다"</strong>.</p>
+    <p>결론(무작위 선별 채택)은 유지된다. 근거는 승패가 아니라 <strong>비용 대비</strong>다 —
+    AL 을 채택하려면 우선순위 큐·백그라운드 재순위·불확실도 계산이라는 구조를 UI 에 넣어야 하는데,
+    <strong>잘해야 무승부인 기능에 그 복잡도를 지불할 이유가 없다</strong>.</p>
+  </div>
+
+  <h3 class="sh3">곡선 오차막대</h3>
+  <p class="lede">절감률의 상대 표준편차 2.5% 를 곡선 전체에 적용한 추정.
+  절감률은 conf 임계값 최적화가 모델 차이를 흡수하므로 mAP50 보다 시드에 둔감하다.</p>
+  <div class="tw"><table>
+    <thead><tr><th>누적 장수</th><th>절감률</th><th>±1σ 구간</th></tr></thead>
+    <tbody>
+      <tr><td>100</td><td class="num">52.8%</td><td class="num">51.5 ~ 54.1%</td></tr>
+      <tr class="hl"><td>150 — 목표 지점</td><td class="num">66.2%</td><td class="num">64.6 ~ 67.8%</td></tr>
+      <tr><td>200</td><td class="num">71.1%</td><td class="num">69.3 ~ 72.9%</td></tr>
+      <tr><td>500</td><td class="num">80.5%</td><td class="num">78.5 ~ 82.5%</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede">150장 부근 곡선 기울기가 0.1~0.27%p/장이므로 ±1.6%p 는 약 ±15장에 해당한다.
+  <strong>정확한 진술: 목표 65% 달성 = 150장 ± 15장.</strong></p>
+</section>
+
+<!-- ══════════ 기각 ══════════ -->
+<section>
+  <div class="shead"><span class="n">08</span><h2>기각된 접근과 근거</h2></div>
+  <div class="rules">
+    <div class="rule-row"><span class="tag t-fail">기각</span>
+      <div><strong>범용 챗 VLM으로 좌표 생성.</strong> 최선을 다해도 F1 0.456, 노동 절감 17%.
+      9,526장 1회 패스에 약 23시간. 업계 어디서도 이 방식을 쓰지 않으며, 전부 grounding 전용 모델(Grounding DINO, SAM 3)을 쓴다.
+      다만 <em>대형 객체 초안</em>과 <em>이미지 단위 검수</em> 용도로는 남길 가치가 있다.</div></div>
+    <div class="rule-row"><span class="tag t-fail">기각</span>
+      <div><strong>Lanczos ×4 등 업스케일링.</strong> 커널 교체 효과가 통계적 노이즈 수준(±1/30).
+      보간은 원본에 없는 정보를 만들지 못한다는 원리적 한계.</div></div>
+    <div class="rule-row"><span class="tag t-fail">기각</span>
+      <div><strong>Gemma에 LoRA를 붙여 소형 객체 학습.</strong> 세 가지 이유.
+      ⑴ 표준 LoRA는 LLM의 attention/MLP에 붙지 비전 타워에 붙지 않는데, 정보 손실은 픽셀이 LLM에 도달하기 <em>전</em>에 일어난다.
+      ⑵ 확대해도 0.33에서 포화하고 커널에 불변이라는 것은 원본에 정보가 없다는 뜻 — 학습으로 복구 불가.
+      ⑶ <strong>닭과 달걀</strong>: LoRA에는 라벨된 데이터가 필요한데, 그게 있으면 애초에 검출기를 학습시키면 된다.
+      게다가 범용 도구를 안전모에 특화시키는 것은 프로젝트 목표와 정반대다.</div></div>
+  </div>
+</section>
+
+
+<!-- ══════════ P3 ══════════ -->
+<section>
+  <div class="shead"><span class="n">09</span><h2>P3 — 편집 UI와 작업공간 구조</h2></div>
+  <p class="lede">사람이 자동 라벨을 고치는 단계를 실제로 돌릴 수 있게 만들고,
+  그 과정에서 <strong>편집 비용을 실측</strong>하도록 계측을 심었다.
+  시뮬레이션과 같은 축에서 비교하는 것이 설계의 제1 조건이었다.</p>
+
+  <div class="tw"><table>
+    <caption>3구역 구조 — 이미지는 db 에만 있고 작업공간은 라벨 텍스트만 갖는다</caption>
+    <thead><tr><th>구역</th><th>내용</th><th>쓰기</th></tr></thead>
+    <tbody>
+      <tr><td><code>db/vest-helmet/</code></td><td>원본 이미지 9,526장 + GT 라벨</td><td>차단 (OS 읽기전용 + 코드 경로 없음)</td></tr>
+      <tr><td><code>work/&lt;작업공간&gt;/</code></td><td>라벨 · 출처 태그 · 편집량 · 소요시간 · 보고서</td><td>스튜디오</td></tr>
+      <tr><td><code>models/&lt;모델&gt;/</code></td><td>가중치 · 학습 이미지 목록 · 예측</td><td>학습/예측 스크립트</td></tr>
+      <tr><td><code>export/&lt;이름&gt;/</code></td><td>학습용으로 조립한 데이터셋 (이미지 실제 복사)</td><td>내보내기</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sh3">신뢰도 3분류가 작업 흐름이 된다</h3>
+  <div class="tw"><table>
+    <caption>150장 모델 · 6,531장 · GT 22,743박스 기준 계측</caption>
+    <thead><tr><th>티어</th><th>조건</th><th>화면</th><th>박스</th><th>Precision</th></tr></thead>
+    <tbody>
+      <tr class="hl"><td>자동승인</td><td>conf ≥ 0.80</td><td>라벨로 앉음</td><td class="num">12,317</td><td class="num">0.955</td></tr>
+      <tr><td>검토</td><td>0.25 ~ 0.80</td><td>주황 이중 테두리</td><td class="num">11,676</td><td class="num">—</td></tr>
+      <tr class="dim"><td>기각</td><td>conf &lt; 0.25</td><td>점선 고스트 (클릭으로 승격)</td><td class="num">11,532</td><td class="num">—</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">계측이지 튜닝이 아님</div>
+    <p>기본값 conf 0.60에서는 자동승인 Precision이 <strong>0.888</strong>로 목표에 못 미친다.
+    0.95를 처음 넘는 지점이 <strong>0.80</strong>이고, 거기서 GT 박스의 <strong>51.7%</strong>를 덮는다.
+    이 값은 GT로 찾았으므로 <strong>"이 방법이 안전 티어를 쓰려면 얼마가 필요한가"</strong>라는 계측치다.
+    새 도메인에서는 사람이 라벨한 소수 표본으로 같은 절차를 밟아야 한다.</p>
+  </div>
+
+  <h3 class="sh3">시드 하한과 편집 비용</h3>
+  <div class="tw"><table>
+    <caption>사람이 GT를 그대로 재현한다고 가정한 시뮬레이션 · 수동 환산 31.6시간</caption>
+    <thead><tr><th>lo</th><th>시드 박스</th><th>그리기</th><th>삭제</th><th>조정</th><th>무편집</th><th>비용</th><th>절감</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0.10</td><td class="num">29,916</td><td class="num">3,837</td><td class="num">11,010</td><td class="num">4,156</td><td class="num">14,750</td><td class="num">11h51m</td><td class="num">62.5%</td></tr>
+      <tr class="hl"><td class="num">0.20</td><td class="num">25,371</td><td class="num">4,468</td><td class="num">7,096</td><td class="num">3,895</td><td class="num">14,380</td><td class="num">11h25m</td><td class="num">63.8%</td></tr>
+      <tr><td class="num">0.25 (채택)</td><td class="num">23,993</td><td class="num">4,786</td><td class="num">6,036</td><td class="num">3,766</td><td class="num">14,191</td><td class="num">11h27m</td><td class="num">63.7%</td></tr>
+      <tr><td class="num">0.40</td><td class="num">20,973</td><td class="num">5,603</td><td class="num">3,833</td><td class="num">3,469</td><td class="num">13,671</td><td class="num">11h44m</td><td class="num">62.8%</td></tr>
+      <tr class="dim"><td class="num">0.75</td><td class="num">14,146</td><td class="num">9,446</td><td class="num">849</td><td class="num">1,994</td><td class="num">11,303</td><td class="num">15h01m</td><td class="num">52.5%</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--ok)">
+    <div class="ct">P2 추정의 재확인</div>
+    <p>P2는 204장 평가셋에서 <strong>150장이면 65% 절감</strong>이라고 추정했다.
+    32배 큰 6,531장에서 실제 모델로 다시 재니 <strong>63.8%</strong> — ±15장 오차 범위 안이다.
+    이미지 1장당 예상 편집 비용은 <strong>6.3초</strong>(수동 17.4초).</p>
+  </div>
+
+  <h3 class="sh3">첫 실측 라운드 준비 완료</h3>
+  <div class="tw"><table>
+    <caption>work/review_n150_r1 — 150장 · hi 0.80 · lo 0.25 · seed 0 · 학습분 겹침 0장</caption>
+    <thead><tr><th>항목</th><th>시뮬레이션 예상</th></tr></thead>
+    <tbody>
+      <tr><td>편집 비용</td><td class="num">13분 7초</td></tr>
+      <tr><td>수동 환산</td><td class="num">37분 15초</td></tr>
+      <tr class="hl"><td>절감</td><td class="num">64.8%</td></tr>
+      <tr><td>그리기 / 삭제 / 조정 / 무편집</td><td class="num">89 / 129 / 71 / 287</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede" style="margin-top:14px">사람이 실제로 돌린 뒤 이 표와 대조하면
+  <strong>5초/1초/3초 단가 자체의 타당성</strong>이 검증된다. 지금까지의 모든 절감률이 이 단가 위에 서 있다.</p>
+
+  <h3 class="sh3">사람의 첫 실측 — 26장 · 88박스 · 5분 35초</h3>
+  <p class="lede">빈 화면에서 직접 그린 첫 라운드다(<code>work/manual_bbox</code>, train 26장,
+  출처 태그 전부 A). 이 프로젝트에서 <strong>사람이 실제로 라벨한 시간이 측정된 것은 처음</strong>이다.</p>
+  <div class="tw"><table>
+    <thead><tr><th>항목</th><th>값</th><th>비고</th></tr></thead>
+    <tbody>
+      <tr><td>이미지 / 박스</td><td class="num">26장 / 88개</td><td>장당 3.4박스</td></tr>
+      <tr><td>총 소요</td><td class="num">335.5초 (5분 35초)</td><td>이동 시 자동 확정으로 측정</td></tr>
+      <tr class="hl"><td>박스당 (전체 평균)</td><td class="num">3.81초</td><td>합의값 5초보다 빠름</td></tr>
+      <tr class="hl"><td>박스당 (장별 중앙값)</td><td class="num">4.64초</td><td>5초에 훨씬 가깝다</td></tr>
+      <tr><td>앞 13장 / 뒤 13장</td><td class="num">4.23초 / 3.37초</td><td>익숙해지며 빨라짐</td></tr>
+      <tr><td>첫 장</td><td class="num">41.2초</td><td>조작 익히는 시간</td></tr>
+      <tr class="dim"><td>모델 학습분과 겹침</td><td class="num">0장</td><td>26장 중 5장은 크롭된 이미지</td></tr>
+    </tbody>
+  </table></div>
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">이 숫자를 어떻게 쓸 것인가</div>
+    <p>처음엔 "3.81초니까 5초 가정이 틀렸다"고 적으려 했는데, 사장님 지적이 맞다 —
+    <strong>26장이라 집중해서 낸 순간 속도</strong>이지 수천 장을 이어 갈 때의 지속 속도가 아니다.
+    <strong>장별 중앙값 4.64초</strong>가 더 정직한 값이고, 그건 합의값 5초와 사실상 같다.</p>
+    <p>대신 데이터가 다른 것을 보여준다. <strong>박스가 많은 장일수록 박스당 시간이 짧다</strong> —
+    12박스 장 1.78초, 6박스 장 2.6~3.0초, 1박스 장 4.6~16.5초.
+    <strong>장을 여는 고정비</strong>가 따로 있다는 뜻이다. 지금 비용 모델은
+    <code>박스수 × 5초</code> 한 항뿐인데 <code>장당 고정비 + 박스당 변동비</code> 두 항이
+    맞을 수 있다. 박스가 적은 이미지가 많은 데이터셋에서 차이가 커진다.
+    <strong>26장으로 확정할 일은 아니고, 다음 측정에서 같은 패턴이 나오는지 본다.</strong></p>
+  </div>
+
+  <h3 class="sh3">학습 도구 — 가중치가 아니라 내력을 남긴다</h3>
+  <p class="lede">지금까지 모델은 임시 폴더의 일회용 스크립트로 만들어졌고, 이전 세션 체크포인트를
+  <code>%TEMP%</code> 에서 해시로 검증하며 건져 온 적도 있다. <code>train_model.py</code> 로
+  정규화했다. 이 프로젝트에서 모델은 결과물이 아니라 <strong>계측 결과</strong>이므로,
+  가중치만으로는 아무 말도 할 수 없다.</p>
+  <div class="tw"><table>
+    <caption>models/&lt;이름&gt;/model.json 에 남기는 것</caption>
+    <thead><tr><th>항목</th><th>왜 필요한가</th></tr></thead>
+    <tbody>
+      <tr><td><code>train_image_list</code></td><td>예측 생성 때 반드시 제외해야 한다. 본 이미지는 자동승인율을 부풀린다</td></tr>
+      <tr class="hl"><td><code>label_provenance</code></td><td>박스의 출처 분해 — A 사람 / B GT / C 학습모델 / D zero-shot 각 몇 개</td></tr>
+      <tr class="hl"><td><code>human_seconds</code></td><td>그 라벨을 만드는 데 사람이 실제로 쓴 시간. 작업공간 기록에서 합산</td></tr>
+      <tr><td><code>leak_check</code></td><td>평가셋과 같은 사진이 있는지 검사한 결과와 방법</td></tr>
+      <tr><td><code>label_source</code></td><td>GT 를 학습에 썼다면 영구히 남는다 (시뮬레이션 표시)</td></tr>
+      <tr><td><code>sha256</code> · <code>hash_ok</code></td><td>채점 전에 뜬 해시와 채점 후 재대조</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede"><strong>"사람 N분 → mAP M" 이 한 줄로 읽혀야</strong> 다음 라운드에 몇 장을 더
+  할지 정할 수 있다. 그게 이 도구의 존재 이유다.</p>
+
+  <div class="call" style="--mark:var(--fail)">
+    <div class="ct">막아 둔 두 가지 사고</div>
+    <p><strong>1. 검수 안 한 이미지를 '객체 없음'으로 학습시키는 것.</strong>
+    작업공간에서 아직 손대지 않은 이미지는 라벨 파일이 없다. 그대로 넘기면 YOLO 는
+    "이 사진에는 아무것도 없다"로 배운다 — 사실이 아니다. → <strong>검수 기록(meta)이 있는
+    이미지만</strong> 쓴다. 빈 라벨 파일은 "봤는데 없었다"는 뜻이므로 그대로 쓴다.
+    이 둘은 완전히 다르고, 파일 유무만 보면 구별되지 않는다.</p>
+    <p><strong>2. 평가셋에 같은 사진이 있는 채로 학습하는 것.</strong>
+    학습 직전에 선택된 학습 이미지와 평가 이미지를 dHash 로 대조한다
+    (dedup_manifest 가 있으면 그 결과를 신뢰). 실제로 <code>vest-helmet_crop</code> 에서
+    150장을 뽑아 보니 <strong>3쌍이 걸려 중단</strong>됐고,
+    <code>_crop_dedup</code> 에서는 통과했다. 강행하려면 <code>--allow-leak</code> 가
+    필요하고 그 사실이 기록에 남는다.</p>
+    <p>그리고 <strong>GT 학습은 기본값이 거부</strong>다. <code>--labels gt</code> 를 명시해야
+    하고 경고가 출력되며 <code>label_source</code> 에 영구히 남는다.
+    전제 위반은 한 번 겪었으므로 실수로 다시 일어나면 안 된다.</p>
+  </div>
+
+  <h3 class="sh3">재기준화 첫 결과 — 정리는 점수를 올리지 않았다</h3>
+  <p class="lede">도구를 검증하면서 재기준화 1호를 겸해 돌렸다.
+  <code>_crop_dedup</code> 에서 seed 0 으로 150장을 뽑았더니 <strong>구 모델의 학습 150장과
+  150/150 완전히 일치</strong>했다(두 데이터셋의 파일명이 같으므로 같은 셔플 결과).
+  즉 <strong>같은 이미지 · 같은 시드 · 같은 하이퍼파라미터</strong>이고, 다른 것은
+  데이터셋을 고쳤다는 사실 하나뿐인 통제된 대조가 됐다.</p>
+  <div class="tw"><table>
+    <caption>같은 평가셋(crop_dedup valid 1,258장)에서 두 모델을 맞대 봤다</caption>
+    <thead><tr><th>모델</th><th>학습 데이터셋</th><th>P</th><th>R</th><th>mAP50</th><th>mAP50-95</th></tr></thead>
+    <tbody>
+      <tr><td><code>y11s_n150_random</code></td><td>vest-helmet (원본)</td>
+        <td class="num">0.8328</td><td class="num">0.7275</td>
+        <td class="num">0.8143</td><td class="num">0.5228</td></tr>
+      <tr><td><code>y11s_n150_dedup</code></td><td>vest-helmet_crop_dedup</td>
+        <td class="num">0.8340</td><td class="num">0.7261</td>
+        <td class="num">0.8124</td><td class="num">0.5213</td></tr>
+      <tr class="hl"><td colspan="4">crop + dedup 학습의 효과</td>
+        <td class="num">−0.0020</td><td class="num">−0.0015</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">솔직한 읽기 — 정리의 값어치는 점수가 아니었다</div>
+    <p>반사 패딩을 잘라내고 중복을 빼도 <strong>모델은 좋아지지 않았다.</strong>
+    차이 −0.002 는 잡음 수준이다. 오히려 원본으로 학습한 모델이 <em>잘라낸</em> 이미지에서
+    미세하게 높은데, 학습·평가 형태가 어긋나면 불리해야 정상이므로 이 역시 잡음이라는 방증이다.</p>
+    <p>반사 패딩 제거는 "라벨 없는 조끼가 보이는 것은 모순된 지도"라는 근거로 했는데,
+    <strong>150장 · 553박스 규모에서는 그 효과가 검출되지 않는다.</strong> 더 큰 n 에서 갈릴지는
+    아직 모른다. 지금 확실한 것은 이것뿐이다.</p>
+    <p>그래도 정리는 헛일이 아니었다. 값어치가 다른 데 있었을 뿐이다 —
+    <strong>이제 점수가 답을 미리 본 것이 아니라는 걸 보장할 수 있다.</strong>
+    유령 라벨 270개와 평가셋 누출 12%를 안은 채로는, 좋아졌다는 말도 나빠졌다는 말도
+    믿을 근거가 없었다. 고친 것은 모델이 아니라 <strong>자</strong>다.</p>
+  </div>
+
+  <h3 class="sh3">seg 데이터셋 — 박스를 폴리곤으로 올린다</h3>
+  <p class="lede">사람은 이미 "여기에 조끼가 있다"는 정보를 박스로 지불했다. SAM 에 그 박스를
+  프롬프트로 넣으면 <strong>사람 노동을 한 푼도 더 쓰지 않고</strong> 모양만 올라온다.
+  <code>make_masks.py --as-dataset</code> 로 <code>db/vest-helmet_crop_dedup_seg</code> 를
+  만들었다.</p>
+  <div class="tw"><table>
+    <caption>SAM 2.1-b · 9,168장 · 727초 (12.6 img/s)</caption>
+    <thead><tr><th>항목</th><th>값</th></tr></thead>
+    <tbody>
+      <tr class="hl"><td>박스 → 마스크</td><td class="num">31,612 → 31,612 (1:1)</td></tr>
+      <tr><td>이미지</td><td class="num">9,168장 (train 6,681 · valid 1,258 · test 1,229)</td></tr>
+      <tr><td>폴리곤 점 개수</td><td class="num">중앙값 24 · 90%tile 109 · 최대 4,874</td></tr>
+      <tr><td>라벨 용량</td><td class="num">1.2 MB → 30.3 MB</td></tr>
+      <tr class="hl"><td>마스크가 박스를 벗어남</td><td class="num">139개 (0.4%)</td></tr>
+      <tr><td>검증 (개수·클래스·좌표범위·홀수좌표·고아)</td><td class="num">9,168개 대조 · 이상 0</td></tr>
+      <tr><td>ultralytics 로드</td><td class="num">1,258장 · 0 corrupt · 마스크 텐서 정상</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">품질 검사를 개수만으로 하면 안 된다</div>
+    <p>처음엔 "SAM 이 돌려준 마스크 개수 == 입력 박스 개수" 만 봤다. 그런데 시험 40장 중
+    <strong>제품 사진 한 장에서 마스크가 조끼가 아니라 화면 전체</strong>로 나왔다.
+    박스가 이미지 대부분을 덮으면 SAM 이 물체 대신 배경을 잡는다. 개수는 맞으니 안 걸린다.</p>
+    <p>→ <strong>면적으로 본다.</strong> 폴리곤 넓이 중 프롬프트 박스 안에 든 비율이
+    0.85 미만이면 그 마스크는 박스가 가리킨 물체가 아니다. 전량에서 <strong>139개(0.4%)</strong>가
+    걸렸다 (중앙값 0.998 · 하위10% 0.965 · 최소 0.583).</p>
+    <p>임계값 0.85 는 1.0 이 아니다. 박스가 물체보다 조금 작게 그려졌을 수 있고 폴리곤
+    단순화로도 몇 픽셀은 밀린다. 살짝 삐져나가는 것은 정상이다.</p>
+  </div>
+
+  <div class="call" style="--mark:var(--note)">
+    <div class="ct">걸린 것을 어떻게 할까 — 장을 빼면 편향이 생긴다</div>
+    <p>처음 정책은 "실패한 마스크가 하나라도 있으면 그 장을 통째로 뺀다" 였다. 원본보다
+    라벨이 적은 장은 <strong>"여기엔 아무것도 없다"는 거짓</strong>을 학습시키기 때문이다.</p>
+    <p>그런데 시험 300장에서 <strong>박스 13개짜리 장이 마스크 하나 때문에 통째로 빠졌다.</strong>
+    1,087개 중 3개가 실패했는데 <strong>25개를 잃었다.</strong> 더 나쁜 것은 방향이다 —
+    박스가 많은(붐비는) 장일수록 실패 확률이 높으므로, <strong>쉬운 장만 남는 편향</strong>이 생긴다.</p>
+    <p>→ 정책을 바꿨다. 실패한 마스크만 <strong>프롬프트 박스를 사각 폴리곤으로 대체</strong>한다.
+    모양은 거칠지만 위치와 클래스는 맞다. 31,612개 중 139개(0.44%)가 사각형이고,
+    그 대가로 <strong>한 장도 잃지 않았다.</strong></p>
+  </div>
+
+  <div class="call" style="--mark:var(--fail)">
+    <div class="ct">이 데이터셋은 정답지가 아니다</div>
+    <p>박스의 위치와 클래스는 GT 에서 왔고(<strong>B</strong>), 마스크의 모양만 SAM 이 만들었다.
+    SAM 은 이 데이터셋을 본 적이 없으므로 <strong>zero-shot(D)</strong> 이다.
+    즉 이 seg 라벨은 <strong>사람이 한 번도 확인하지 않은 기계 출력</strong>이고,
+    박스가 GT 에서 왔으므로 데이터셋 전체가 GT 의 지위를 그대로 물려받는다 —
+    채점·시뮬레이션 용도이며 자동 라벨러의 학습 데이터로 쓰면 같은 전제 위반이다.
+    <code>seg_manifest.json</code> 에 이 사실이 기록된다.</p>
+  </div>
+
+  <div class="call" style="--mark:var(--fail)">
+    <div class="ct">막아 둔 함정 하나 더 — 조용히 detect 로 학습된다</div>
+    <p><code>train_model.py</code> 의 기본 베이스는 <code>yolo11s.pt</code>(detect) 다.
+    seg 데이터셋을 줘도 <strong>에러가 나지 않는다</strong> — ultralytics 가 폴리곤을 박스로
+    접어서 detect 학습을 해 버린다. 몇 시간 뒤 "왜 마스크가 안 나오지" 하고서야 알게 된다.</p>
+    <p>→ 학습 직전에 라벨을 표본으로 읽어 종류(box/segment)를 판정하고 베이스 모델의
+    <code>task</code> 와 대조한다. 어긋나면 중단하고 <code>--base yolo11s-seg.pt</code> 를
+    알려준다. 강행하려면 <code>--allow-task-mismatch</code> 가 필요하고 기록에 남는다.</p>
+  </div>
+
+  <h3 class="sh3">seg 학습 결과 — 마스크로 배우면 박스가 더 정확해진다</h3>
+  <p class="lede">bbox 판과 <strong>완전히 같은 150장</strong>으로 seg 모델을 학습했다
+  (<code>yolo11s-seg.pt</code> · 80에폭 · 17분 18초). 같은 이미지·같은 객체이고 라벨의 형식만
+  다르므로, 차이는 <strong>마스크로 배웠는가</strong> 하나뿐이다.</p>
+  <div class="tw"><table>
+    <caption>같은 150장 · 같은 평가셋(valid 1,258장)</caption>
+    <thead><tr><th>모델</th><th>지표</th><th>P</th><th>R</th><th>mAP50</th><th>mAP50-95</th></tr></thead>
+    <tbody>
+      <tr><td><code>y11s_n150_dedup</code> (detect)</td><td>박스</td>
+        <td class="num">0.8340</td><td class="num">0.7261</td>
+        <td class="num">0.8124</td><td class="num">0.5213</td></tr>
+      <tr class="hl"><td><code>y11sseg_n150_dedup</code> (segment)</td><td>박스</td>
+        <td class="num">0.8391</td><td class="num">0.7205</td>
+        <td class="num">0.8061</td><td class="num">0.5617</td></tr>
+      <tr><td></td><td>박스 차이</td><td class="num">+0.005</td><td class="num">−0.006</td>
+        <td class="num">−0.006</td><td class="num"><strong>+0.040</strong></td></tr>
+      <tr class="dim"><td><code>y11sseg_n150_dedup</code></td><td>마스크</td>
+        <td class="num">0.8223</td><td class="num">0.6844</td>
+        <td class="num">0.7510</td><td class="num">0.4789</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede">클래스별 마스크 mAP50 — <code>safety_helmet</code> 0.828 ·
+  <code>reflective_jacket</code> 0.674. 헬멧이 훨씬 쉽다. 단순한 볼록 형태이고 경계가
+  또렷한 반면, 조끼는 팔·가방·다른 사람에 가려지고 경계가 옷 주름을 탄다.</p>
+
+  <div class="call" style="--mark:var(--ok)">
+    <div class="ct">눈에 띄는 것 — mAP50-95 가 +0.040</div>
+    <p>박스 mAP50 은 사실상 같은데(−0.006), <strong>엄격한 IoU 까지 보는 mAP50-95 가
+    0.5213 → 0.5617 로 뚜렷하게 올랐다.</strong> 마스크로 지도하면 박스를 <em>더 딱 맞게</em>
+    친다는 뜻이다. 있고 없고를 맞히는 능력은 같은데 <strong>경계를 재는 능력이 올라갔다.</strong></p>
+    <p>공짜로 얻은 것이다 — 사람 노동은 똑같이 150장이고, 마스크는 SAM 이 박스에서
+    만들었다. 다만 <strong>150장 한 판</strong>이므로 시드 분산 안일 수 있다.
+    같은 크기에서 재현되는지 확인하기 전에는 단정하지 않는다.</p>
+  </div>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">마스크 지표 0.751 을 '분할 성능'으로 읽으면 안 된다</div>
+    <p>이 값은 <strong>SAM 이 만든 라벨을 정답으로 삼아</strong> 잰 것이다. 즉
+    "SAM 의 마스크를 얼마나 재현하는가"이지 "진짜 물체 경계를 얼마나 맞히는가"가 아니다.
+    SAM 이 틀린 곳에서는 모델이 같이 틀려야 점수가 높다.</p>
+    <p>진짜 분할 성능을 알려면 사람이 그린 마스크가 있어야 한다. 지금은 없다.
+    <code>model.json</code> 의 <code>mask_metrics_note</code> 에 이 사실을 적어 뒀다.</p>
+    <p>그리고 이건 도구의 결함이기도 했다 — <code>train_model.py</code> 가 seg 모델인데도
+    <strong>박스 지표만 저장하고 있었다.</strong> 정작 이 모델을 만든 이유인 마스크 성능이
+    기록에서 빠져 있었다. 고치고, 이미 학습한 모델은 재학습 없이 채점만 다시 돌려
+    채웠다(가중치 해시로 불변 확인).</p>
+  </div>
+
+  <h3 class="sh3">마스크 품질을 자동으로 거를 수 있는가 — 신호 세 개를 재봤다</h3>
+  <p class="lede">"어느 마스크를 사람이 봐야 하는가"를 고르는 문제다. 전량 검수는 불가능하고,
+  눈대중 규칙은 근거가 없다. 후보 신호를 실측으로 비교했다.</p>
+  <div class="tw"><table>
+    <caption>불량 표본 60개(채움 비율 상위, 눈으로 6개 확인) vs 무작위 대조군 200개</caption>
+    <thead><tr><th>신호</th><th>불량 중앙값</th><th>대조군 중앙값</th><th>AUC</th><th>출처</th></tr></thead>
+    <tbody>
+      <tr class="hl"><td>프롬프트 섭동 안정성</td><td class="num">0.0006</td>
+        <td class="num">0.9654</td><td class="num">0.966</td>
+        <td>SAM 공식 stability score 를 박스 프롬프트로 옮김</td></tr>
+      <tr><td>둘의 곱</td><td class="num">0.0004</td><td class="num">0.8832</td>
+        <td class="num">0.970</td><td>—</td></tr>
+      <tr class="dim"><td>SAM 예측 IoU</td><td class="num">0.8708</td>
+        <td class="num">0.9316</td><td class="num">0.677</td>
+        <td>SAM 이 스스로 매긴 점수 (<code>r.boxes.conf</code>)</td></tr>
+      <tr class="dim"><td>채움 비율 (마스크/박스)</td><td colspan="3" class="num">비교 불가 — 이걸로 표본을 골랐으므로 순환</td>
+        <td>내가 급조한 대리 지표</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede">SAM 공식 <code>AutomaticMaskGenerator</code> 는 <code>pred_iou_thresh=0.88</code> 과
+  <code>stability_score_thresh=0.95</code> 두 신호로 마스크를 거른다. 우리는 박스 프롬프트를
+  쓰므로 확률맵 문턱 흔들기를 그대로 못 쓴다 — 대신 <strong>박스를 ±6% 흔들어</strong> 세 번
+  물어보고 마스크가 유지되는지 본다. 진짜 물체면 프롬프트가 조금 달라져도 같은 것을 딴다.</p>
+  <div class="call" style="--mark:var(--fail)">
+    <div class="ct">내 오류 하나 — SAM 은 점수를 주고 있었다</div>
+    <p><code>make_masks.py</code> 가 "이 SAM 은 마스크별 신뢰도를 주지 않는다"고 기록하고 있었다.
+    틀렸다. ultralytics 는 SAM 의 예측 IoU 를 <code>masks.conf</code> 가 아니라
+    <strong><code>boxes.conf</code></strong> 에 넣는다. 엉뚱한 속성을 보고 없다고 단정했다.
+    다만 막상 재보니 이 실패 유형에는 약한 신호였다(AUC 0.677).</p>
+  </div>
+
+  <h3 class="sh3">VLM 격자 검수 — 속도는 확인, 품질은 미정</h3>
+  <p class="lede">사장님 발상: 어차피 박스로 잘라 조각이 작으니 <strong>N 개를 번호 붙여 격자로
+  묶어</strong> 한 번에 물어보면 처리량이 N 배가 되고, VLM 이 잘하는 비교 판단을 쓰게 된다.</p>
+  <div class="tw"><table>
+    <caption>gemma-4-12b-it-qat NVFP4 · 5칸 격자 21개 · 105칸</caption>
+    <thead><tr><th>항목</th><th>값</th></tr></thead>
+    <tbody>
+      <tr class="hl"><td>칸당 처리</td><td class="num">1.33초 (격자당 6.6초)</td></tr>
+      <tr class="hl"><td>단건 처리(8.9초/장) 대비</td><td class="num">6.7배</td></tr>
+      <tr><td>31,612개 환산</td><td class="num">11.6시간 (1병렬) · 3병렬이면 4시간 미만</td></tr>
+      <tr><td>JSON 파싱 실패</td><td class="num">0 / 21</td></tr>
+      <tr class="dim"><td>자리별 검출률 (1~5번)</td><td class="num">29% · 75% · 0% · 50% · 0%</td></tr>
+      <tr class="dim"><td>자리별 오탐 (1~5번)</td><td class="num">2 · 9 · 9 · 10 · 5</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede"><strong>속도 주장은 검증됐다.</strong> 위치 편향도 실재한다 — 3번과 5번 자리는
+  하나도 못 잡았고 오탐은 가운데에 몰린다. 표본이 작아 확정은 못 하지만, 쓰려면 자리를 섞어
+  두 번 돌리거나 격자를 줄여야 한다.</p>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">품질 점수는 매기지 못했다 — 내 채점이 불공정했다</div>
+    <p>재현율 28% / 정밀도 17% 로 나왔지만 <strong>그 숫자는 버려야 한다.</strong>
+    내가 VLM 에게 물은 것("윤곽선이 물체를 감싸느냐")과 정답표가 잰 것(프롬프트 안정성)이
+    서로 <strong>다른 결함</strong>이었다.</p>
+    <p>결함이 두 종류로 갈린다는 것이 오히려 소득이다.</p>
+    <ul style="margin:6px 0 0 18px">
+      <li><strong>기하적</strong> — 마스크가 배경을 잡거나 프롬프트에 흔들린다.
+        안정성이 잡고 VLM 은 못 본다(물어보지 않았으니).</li>
+      <li><strong>의미적</strong> — 헬멧 마스크가 얼굴을 먹는다. VLM 이 잡고
+        안정성은 <strong>원리적으로</strong> 못 본다(마스크는 안정적이니까).</li>
+    </ul>
+    <p>VLM 이 "안정성은 정상인데 이상하다"고 찍은 35개 중 표본을 보면 실제로 헬멧 윤곽선이
+    이마 아래로 내려와 있는 것들이 있다. <strong>판정은 하지 않는다</strong> —
+    <code>docs/mask_defect_semantic.jpg</code> 에 남겨 두고 사장님 판단을 기다린다.</p>
+    <p>공정하게 재려면 <strong>사람이 만든 정답표 100칸</strong>이 필요하다. 격자 20장이면
+    10분이다. 그게 있어야 안정성 문턱값도, VLM 프롬프트도 근거를 갖는다.</p>
+  </div>
+
+  <div class="call" style="--mark:var(--note)">
+    <div class="ct">보류 — 마스크 정제 파이프라인 (사장님 제안)</div>
+    <p>순서: <strong>모폴로지 → CRF → 폴리곤 단순화 → (그래도 안 되면) 사람 수동</strong>.
+    스튜디오에 seg 수정 모드를 만들어 이미지를 보고 필요하면 1·2·3 을 걸고, 그래도 안 되면
+    직접 고친다.</p>
+    <p>순서의 근거가 맞다 — 단순화는 픽셀을 버리는 <strong>손실 압축</strong>이므로 반드시
+    마지막이어야 하고, CRF 는 픽셀 확률 모델이라 벡터화 전에 걸어야 한다.</p>
+    <p>다만 <strong>1단계(모폴로지)를 먼저 재보니 지금 데이터에는 고칠 것이 없었다</strong>
+    (문제 48). 그래서 보류한다. 착수하게 되면 걸림돌은 CRF 다 —
+    <code>pydensecrf</code> 가 설치돼 있지 않고 Python 3.14 라 휠도 없을 가능성이 높다.
+    <code>opencv-contrib</code> 도 아니다(<code>cv2.ximgproc</code> 없음).
+    이미 있는 <strong><code>cv2.grabCut</code></strong> 이 색 모델 + 평활 항으로 같은 역할을
+    하므로 먼저 그걸로 재보는 편이 낫다 — 환경(cu130 nightly torch)이 예민해서 새 패키지를
+    까는 것 자체가 위험하다.</p>
+  </div>
+</section>
+
+<!-- ══════════ 하드웨어 ══════════ -->
+<section>
+  <div class="shead"><span class="n">10</span><h2>하드웨어·성능 실측</h2></div>
+  <p class="lede">"GPU가 좋아서 득을 봤나"라는 질문에서 출발해 파이프라인 전체를 분해했다.
+  결론은 <strong>이 워크로드에서 GPU는 대부분 놀고 있었다</strong>는 것.</p>
+
+  <div class="tw"><table>
+    <caption>시간이 실제로 어디에 쓰이는가</caption>
+    <thead><tr><th>구간</th><th>측정</th><th>GPU 비중</th></tr></thead>
+    <tbody>
+      <tr><td>학습 1 epoch (150장)</td><td class="num">2.37초</td><td class="num">30%</td></tr>
+      <tr><td> └ 그중 매 epoch 검증 204장</td><td class="num">1.11초 (43%)</td><td class="num">—</td></tr>
+      <tr><td>추론 <code>model.predict</code></td><td class="num">128 img/s</td><td class="num">27%</td></tr>
+      <tr><td> └ 순수 GPU 커널 상한</td><td class="num">504 img/s (FP32) · 937 (FP16)</td><td class="num">100%</td></tr>
+      <tr><td>파일 읽기</td><td class="num">14,065 img/s</td><td class="num">—</td></tr>
+      <tr><td>JPEG 디코드 (1스레드)</td><td class="num">819 img/s</td><td class="num">—</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--note)">
+    <div class="ct">정밀도를 낮춰도 안 빨라진다</div>
+    <p>GPU가 27%만 일하므로 암달의 법칙에 걸린다. <code>half=True</code>는 130 → <strong>131 img/s</strong>로 무효.
+    NVFP4까지 가도 GPU가 <em>공짜</em>일 때의 상한이 245 → <strong>329 img/s</strong>(1.34배)다.
+    게다가 <code>torch.float4_e2m1fn_x2</code>는 이 빌드에서 캐스팅이 막혀 있고 TensorRT·ModelOpt도 없다.
+    FP16만으로도 이미 티어가 3건 흔들린다 — <strong>3.5초 벌자고 라벨을 흔들 이유가 없다</strong>.</p>
+  </div>
+
+  <div class="tw"><table>
+    <caption>RTX 5070 Ti 실측 (yolo11s · batch 16 · 640)</caption>
+    <thead><tr><th>항목</th><th>값</th><th>비고</th></tr></thead>
+    <tbody>
+      <tr><td>학습 스텝 AMP(bf16)</td><td class="num">71.8 ms</td><td>223 img/s · VRAM 4.00 GB</td></tr>
+      <tr><td>학습 스텝 FP32</td><td class="num">96.3 ms</td><td>167 img/s · VRAM 7.29 GB</td></tr>
+      <tr><td>AMP 이득</td><td class="num">1.34배</td><td>conv 는 텐서코어를 못 채운다</td></tr>
+      <tr><td>행렬곱 TF32 / BF16 / FP8</td><td class="num">41.9 / 88.6 / 175.8 TFLOPS</td><td>원시 처리량은 2~4배</td></tr>
+      <tr><td>지원 아키텍처</td><td class="num">sm_75 이상</td><td>Pascal(GTX 1060)은 이 빌드로 실행 불가</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--note)">
+    <div class="ct">GTX 1060이었다면 (추정)</div>
+    <p>FP32 연산 7.3배 · 대역폭 4.7배 차이. AMP 1.34배가 말해주듯 이 워크로드는 대역폭에 묶여 있으므로
+    실제 격차는 대역폭비에 가깝다. <strong>150장 학습 3.2분 → 약 12~16분</strong>,
+    <strong>추론은 2배 미만</strong>(GPU가 27%만 쓰이므로). 지금까지 한 작업은 1060으로도 전부 가능하다.</p>
+    <p>다만 batch 16 FP32는 7.29 GB라 6 GB에 안 들어가 batch 8로 내려가고, 학습률을 다시 잡아야 한다.
+    <strong>train 6,681장 전체 학습으로 가면</strong> GPU가 병목이 되어 54분 대 4~5시간으로 갈린다.</p>
+  </div>
+
+  <div class="tw"><table>
+    <caption>적용 검토 4건 — 실익이 있었던 것은 1건</caption>
+    <thead><tr><th>후보</th><th>결과</th><th>판정</th></tr></thead>
+    <tbody>
+      <tr class="dim"><td>학습 workers 4 → 8/12</td><td class="num">2.47 → 2.68 / 2.44초</td><td>차이 없음</td></tr>
+      <tr class="dim"><td>스튜디오 로더 워커 증설</td><td class="num">사람 6초/장 vs 로더 4,000장/초</td><td>불필요</td></tr>
+      <tr class="dim"><td>학습 검증 끄기</td><td class="num">3.4분 → 1.9분</td><td>best.pt 근거 상실, 기각</td></tr>
+      <tr class="hl"><td>예측 생성 선행 디코드</td><td class="num">67.0 → 37.2초 (1.8배)</td><td>적용 · 결과 바이트 동일</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+
+<!-- ══════════ 데이터 품질 ══════════ -->
+<section>
+  <div class="shead"><span class="n">11</span><h2>데이터 품질 — 계측 장치를 먼저 고치다</h2></div>
+  <p class="lede">라벨링을 시작하자 계측 장치 자체의 결함이 드러났다.
+  vest-helmet 은 정답지를 가진 유일한 데이터셋이라 여기서 방법을 검증하기로 했는데,
+  그 정답지가 <strong>문서 없는 개인 작업물</strong>이었고 이미지에는 전처리 사고가 남아 있었다.</p>
+
+  <h3 class="sh3">발견 1 — GT 오류</h3>
+  <div class="tw"><table>
+    <caption>사람이 직접 라벨링을 시작하고 몇 장 만에 나온 것들</caption>
+    <thead><tr><th>이미지</th><th>GT 의 라벨</th><th>판정</th><th>규칙</th></tr></thead>
+    <tbody>
+      <tr><td><code>00017</code></td><td>맨머리에 <code>safety_helmet</code> 155×139px</td>
+          <td>삭제 — 램프에 빛나는 머리카락</td><td>R1</td></tr>
+      <tr><td><code>04875</code></td><td>노란 옷에 <code>reflective_jacket</code> 639×156px</td>
+          <td>삭제 — 반사재 없음</td><td>R2</td></tr>
+      <tr><td><code>07808</code></td><td>좌측 끝 20×94px 조각에 <code>safety_helmet</code></td>
+          <td>삭제 — 맥락 없음</td><td>R4</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede">데이터셋 README 에는 주석 기준이 한 줄도 없다.
+  <code>Provided by a Roboflow user</code> 가 전부다.</p>
+
+  <h3 class="sh3">발견 2 — 반사 패딩과 유령 객체</h3>
+  <div class="tw"><table>
+    <caption>db/vest-helmet → db/vest-helmet_crop · 9,526장 · 157초</caption>
+    <thead><tr><th>항목</th><th>값</th></tr></thead>
+    <tbody>
+      <tr class="hl"><td>반사 검출·수정</td><td class="num">1,507장 (15.8%)</td></tr>
+      <tr><td>변별 적용 (상 / 하 / 좌 / 우)</td><td class="num">933 / 810 / 336 / 325</td></tr>
+      <tr><td>잘라낸 면적</td><td class="num">평균 24.2% / 장</td></tr>
+      <tr><td>라벨 좌표 이동</td><td class="num">6,162개</td></tr>
+      <tr class="hl"><td>유령 라벨 삭제 (GT 가 반사에 붙인 박스)</td><td class="num">270개</td></tr>
+      <tr><td>라벨 때문에 축소 / 취소</td><td class="num">424장 / 131장</td></tr>
+      <tr><td>설명되지 않는 라벨 손실</td><td class="num">0개</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">왜 잘라내기인가</div>
+    <p><strong>학습에 정사각형이 필요해서 그렇게 만든 것이 아니다.</strong> ultralytics 는 로딩할 때
+    비율을 유지한 채 회색(114)으로 letterbox 한다. 미리 채울 이유가 없었고, 반사로 채운 상태는
+    패딩을 <strong>두 번</strong> 하는 셈이었다.</p>
+    <p>회색으로 덮는 방법도 있었지만 죽은 화소 24%를 그대로 안고 간다. 잘라내면 원본 비율로
+    돌아가고 letterbox 는 학습할 때 한 번만 걸린다. 대신 <strong>모든 라벨 좌표를 다시 계산</strong>해야
+    했다 — 저장된 라벨이 거의 없는 지금이 가장 싼 시점이었다.</p>
+  </div>
+
+  <h3 class="sh3">검출 기준과 그 근거</h3>
+  <div class="tw"><table>
+    <caption>모든 값이 실측에서 나왔다 — 짐작으로 잡은 값은 전부 틀렸다</caption>
+    <thead><tr><th>항목</th><th>값</th><th>근거</th></tr></thead>
+    <tbody>
+      <tr><td>최소 띠 폭</td><td class="num">64 px (10%)</td>
+          <td>"화면이 쪼개진 수준"만 대상. 애매한 것은 건드리지 않는다</td></tr>
+      <tr class="hl"><td>1D 행평균 프로파일</td><td class="num">&lt; 3.0</td>
+          <td>주 신호. 실측 1.06 ~ 4.2</td></tr>
+      <tr><td>2D 평균 절대차</td><td class="num">&lt; 15.0</td>
+          <td>실측 4.6 ~ 9.5 + JPEG 여유</td></tr>
+      <tr><td>99 백분위 차이</td><td class="num">&lt; 110</td>
+          <td>최대차는 고주파 사진에서 191 까지 튄다 (JPEG)</td></tr>
+      <tr><td>질감 하한 (std)</td><td class="num">20</td>
+          <td>흰 벽·하늘은 어떤 축으로도 대칭이라 판정 불가</td></tr>
+      <tr><td>최대 비율</td><td class="num">45%</td>
+          <td>한 변이 이보다 크면 검출 실패로 간주</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <caption>사례별 실측 — 이 세 장이 기준을 세 번 고치게 했다</caption>
+    <thead><tr><th>이미지</th><th>1D</th><th>2D 평균</th><th>2D 최대</th><th>결과</th><th>드러난 문제</th></tr></thead>
+    <tbody>
+      <tr><td><code>06109</code></td><td class="num">4.2</td><td class="num">4.6</td>
+          <td class="num">47</td><td class="num">640→640×428</td>
+          <td>임계값을 0 근처로 잡은 오류 · 반 픽셀 축</td></tr>
+      <tr><td><code>00181</code></td><td class="num">1.06</td><td class="num">8.95</td>
+          <td class="num">191</td><td class="num">640→640×428</td>
+          <td>최대차 기준이 고주파 사진을 거름 · <code>break</code> 조기종료</td></tr>
+      <tr><td><code>08886</code></td><td class="num">—</td><td class="num">—</td>
+          <td class="num">—</td><td class="num">띠 106→0</td>
+          <td>유령 판정 1회만 실행 → 걸친 라벨이 조용히 삭제</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sh3">도구와 검증 규모</h3>
+  <div class="tw"><table>
+    <caption>2026-08-16 기준</caption>
+    <thead><tr><th>파일</th><th>줄</th><th>역할</th></tr></thead>
+    <tbody>
+      <tr><td><code>yolo_dataset_studio.py</code></td><td class="num">3,948</td>
+          <td>시각화 · 룰 검수 · 박스 편집 · 작업공간 · 보고서 · 내보내기</td></tr>
+      <tr><td><code>repair_padding.py</code></td><td class="num">519</td>
+          <td>반사 검출 · 잘라내기 · 라벨 좌표 이동 · 유령 라벨 제거</td></tr>
+      <tr><td><code>make_preds.py</code></td><td class="num">149</td>
+          <td>예측 생성 (선행 디코드, 176 img/s)</td></tr>
+      <tr><td><code>launch.ps1</code></td><td class="num">114</td>
+          <td>런처 · 중복 실행 감지 · 오류 기록</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tw"><table>
+    <caption>자동 검증 194항목 · 전부 통과</caption>
+    <thead><tr><th>테스트</th><th>항목</th><th>대상</th></tr></thead>
+    <tbody>
+      <tr><td>smoke_p3</td><td class="num">116</td>
+          <td>파싱 · 기하 · 배치 · 작업공간 · 채점 · 보고서 · 내보내기 · GUI 편집</td></tr>
+      <tr><td>test_keys</td><td class="num">21</td><td>단축키 (창을 띄워 실제 키 이벤트)</td></tr>
+      <tr><td>test_worklist</td><td class="num">21</td><td>작업목록 선별 · 제외 · 재현성</td></tr>
+      <tr><td>test_drawflow</td><td class="num">15</td><td>클래스 먼저 → 그리기 흐름</td></tr>
+      <tr><td>test_crop_labels</td><td class="num">14</td><td>잘라내기 좌표 변환 (박스 · 폴리곤 · 경계)</td></tr>
+      <tr><td>test_errorlog</td><td class="num">7</td><td>예외 기록 · 알림 · 앱 생존</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede">파생본은 0.46 GB → <strong>0.83 GB</strong>로 늘었다.
+  화소는 24% 줄었지만 JPEG 품질 95 로 재인코딩했기 때문이다.
+  원본이 그만큼 강하게 압축돼 있었다는 뜻이기도 하다.</p>
+
+  <h3 class="sh3">안전장치</h3>
+  <div class="rules">
+    <div class="rule-row"><span class="tag t-ok">불변</span>
+      <div><code>db</code> 원본은 열지도 쓰지도 않는다. 파생본을 새 폴더에 만든다.
+      작업 전후 9,526개 라벨 SHA-256 대조 · 읽기전용 유지 확인.</div></div>
+    <div class="rule-row"><span class="tag t-warn">양보</span>
+      <div>라벨에 <strong>걸쳐 있는</strong> 영역은 절대 건드리지 않는다. 검출이 틀렸을 때
+      진짜 객체를 지우는 것이 이 도구가 낼 수 있는 최악의 사고다. 놓친 반사는 그냥 남을 뿐이다.</div></div>
+    <div class="rule-row"><span class="tag t-fail">예외</span>
+      <div>띠 안에 <strong>완전히</strong> 들어간 라벨만 유령으로 보고 지운다.
+      그건 원본에 존재하지 않는 영역에 있는 박스다 (R1).</div></div>
+    <div class="rule-row"><span class="tag t-note">감시</span>
+      <div>유령으로 센 것보다 많이 사라지면 경고하고 매니페스트에 기록한다.
+      라벨이 조용히 줄어드는 사고를 다시 겪지 않기 위해서다.</div></div>
+  </div>
+</section>
+
+<!-- ══════════ 12. 데이터 누출 ══════════ -->
+<section>
+  <div class="shead"><span class="n">12</span><h2>데이터 누출 — 채점표에 답이 적혀 있었다</h2></div>
+  <p class="lede">사장님이 valid 를 직접 넘겨보다 <strong>train 에서 본 사진이 또 나온다</strong>고
+  지적했다. 확인 결과 <strong>valid 의 12.0%, test 의 10.9%</strong> 가 train 에 같은 사진을
+  갖고 있었다. 반사 패딩이 계측 장치의 <em>입력</em>을 오염시킨 문제였다면, 이건 계측 장치의
+  <em>답안지</em>가 오염된 문제다.</p>
+
+  <div class="call" style="--mark:var(--fail)">
+    <div class="ct">파일 해시로는 절대 안 걸린다</div>
+    <p>9,526장의 SHA-256 을 전부 떠 봤다. <strong>바이트가 같은 파일은 0장</strong>이다.
+    Roboflow 가 전량을 640×640 으로 다시 인코딩했기 때문에 같은 사진이라도 해시가 전부 다르다.
+    파일명도 <code>helmet_jacket_00000</code>~<code>_10498</code> 연번이고 중복이 없다.
+    <strong>그림을 직접 봐야만 걸린다.</strong></p>
+  </div>
+
+  <h3 class="sh3">왜 이렇게 됐나 — 스플릿은 번호를 세 토막 낸 것</h3>
+  <div class="tw"><table>
+    <caption>번호 순으로 늘어놓으면 스플릿이 바뀌는 지점이 딱 3개다</caption>
+    <thead><tr><th>스플릿</th><th>번호 범위</th><th>장수</th></tr></thead>
+    <tbody>
+      <tr><td>train</td><td class="num">#0 ~ #7349</td><td class="num">6,681</td></tr>
+      <tr><td>test</td><td class="num">#7350 ~ #8924</td><td class="num">1,418</td></tr>
+      <tr><td>valid</td><td class="num">#8925 ~ #10498</td><td class="num">1,427</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede">연속 프레임이 흩어진 것이 <strong>아니다</strong>. 이웃 번호가 다른 스플릿에
+  놓인 경우는 전체에서 2쌍뿐이다. 원인은 다른 데 있다 — 이 데이터셋은 스톡 사진을 긁어 모은
+  것이고, <strong>수집 단계에서 이미 같은 사진이 여러 번 들어와</strong> 번호만 멀리 떨어진 채
+  다른 토막에 배정됐다. 실제로 겹치는 쌍의 번호는 <code>#10</code>↔<code>#10262</code>,
+  <code>#44</code>↔<code>#7413</code> 처럼 아득히 멀다.</p>
+
+  <h3 class="sh3">어떻게 찾았나 — 2단계 검출</h3>
+  <div class="tw"><table>
+    <caption>9,526² 를 전부 픽셀로 맞대면 4,500만 번이다. 해시로 좁히고 후보만 확인한다</caption>
+    <thead><tr><th>단계</th><th>방법</th><th>기준</th><th>근거</th></tr></thead>
+    <tbody>
+      <tr><td>1. 후보</td><td>dHash 64bit (9×8 회색조, 가로 이웃 밝기 비교)</td>
+        <td class="num">해밍 ≤ 5</td>
+        <td>밝기의 절대값이 아니라 대소만 보므로 재인코딩에 견딘다.
+        5→8 로 넓혀도 확실한 쌍이 313→324 로 11쌍 늘 뿐 (96.6%가 이미 5 안)</td></tr>
+      <tr><td>2. 확인</td><td>64×64 회색조 평균절대차(MAD)</td>
+        <td class="num">MAD &lt; 18</td>
+        <td>눈으로 정했다 — 아래 표</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="tw"><table>
+    <caption>경계를 어디에 그을 것인가 — 구간별로 뽑아 직접 봤다</caption>
+    <thead><tr><th>MAD 구간</th><th>본 쌍</th><th>같은 장면</th><th>판단</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0 ~ 8</td><td class="num">8</td><td class="num">8 / 8</td>
+        <td>사실상 같은 파일. 재인코딩 차이뿐</td></tr>
+      <tr class="hl"><td class="num">8 ~ 18</td><td class="num">12</td><td class="num">12 / 12</td>
+        <td>같은 촬영분. 살짝 다른 크롭, 인물이 조금 움직인 컷</td></tr>
+      <tr><td class="num">14 ~ 18</td><td class="num">4</td><td class="num">4 / 4</td>
+        <td>(위와 중복 표본) 여전히 전부 같은 장면</td></tr>
+      <tr class="dim"><td class="num">20 이상</td><td class="num">8</td><td class="num">3 / 8</td>
+        <td>같은 조끼를 입었을 뿐인 남남이 섞이기 시작</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede">확인용 그림은 폴더에 남겼다 —
+  <code>docs/dedup_threshold_8_18.jpg</code> (8~18 무작위 12쌍) ·
+  <code>docs/dedup_threshold_14_28.jpg</code> (14~28 12쌍) ·
+  <code>docs/dedup_preview.jpg</code> (실제로 뺀 것 8쌍, 왼쪽 남김 / 오른쪽 뺌) ·
+  <code>docs/cross_dups.tsv</code> (교차쌍 437행).</p>
+  <p class="lede">경계는 18과 20 사이에 있다. <strong>18을 쓴다.</strong> 이 방향의 오차는
+  비대칭이다 — 아닌 것을 빼면 평가용 이미지가 한 장 줄 뿐이고, 맞는 것을 놓치면 누출이 그대로
+  남는다. 그렇다고 무작정 넓히지도 않는다. 빼는 것이 한쪽으로 쏠리면(=train 과 닮은 쉬운 것만
+  빠지면) 평가셋의 성격 자체가 바뀐다.</p>
+
+  <h3 class="sh3">얼마나 있었나</h3>
+  <div class="tw"><table>
+    <caption>db/vest-helmet 과 db/vest-helmet_crop 두 파생본에서 각각 검출해 합집합 · 15초</caption>
+    <thead><tr><th>항목</th><th>값</th></tr></thead>
+    <tbody>
+      <tr><td>같은 사진 쌍</td><td class="num">987쌍</td></tr>
+      <tr><td>같은 사진 무리</td><td class="num">707개 · 1,542장 (16.2%)</td></tr>
+      <tr class="hl"><td>그중 스플릿을 넘는 무리</td><td class="num">334개</td></tr>
+      <tr><td>무리 크기</td><td class="num">2장 630 · 3장 52 · 4장 16 · 5~8장 8 · 12장 1</td></tr>
+      <tr><td>교차 조합</td><td class="num">train+valid 152 · train+test 141 · valid+test 31 · 셋 다 10</td></tr>
+      <tr class="hl"><td>train 에 쌍둥이가 있는 valid</td><td class="num">171장 (12.0%)</td></tr>
+      <tr class="hl"><td>train 에 쌍둥이가 있는 test</td><td class="num">155장 (10.9%)</td></tr>
+      <tr class="dim"><td>크롭 파생본에서만 잡힌 쌍 / 원본에서만 잡힌 쌍</td><td class="num">18 / 66</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede">두 파생본에서 따로 돌린 이유가 마지막 줄이다. 반사 패딩을 잘라내야 비로소
+  같아지는 쌍이 18개, 반대로 크롭 때문에 어긋나 원본에서만 잡히는 쌍이 66개 있었다.
+  <strong>합집합으로 봐야 어느 쪽도 놓치지 않는다.</strong></p>
+
+  <h3 class="sh3">처리 — train 우선</h3>
+  <div class="call" style="--mark:var(--note)">
+    <div class="ct">규칙</div>
+    <p>무리마다 <strong>우선순위가 가장 높은 스플릿의 사본을 전부 남기고</strong>, 그보다 낮은
+    스플릿의 사본을 전부 뺀다. 우선순위는 <strong>train &gt; valid &gt; test</strong>.</p>
+    <p>train 이 1순위인 이유: 목적이 평가셋의 순도이기 때문이다. train 은 사람이 라벨을 붙일
+    비싼 자원이라 한 장도 잃지 않고, 대신 답지 쪽을 깎는다. valid 가 test 보다 위인 이유:
+    valid 는 모델을 고르는 데 쓰이므로 test 는 valid 와도 독립이어야 한다.</p>
+    <p>같은 스플릿 <em>안</em>의 중복 411장은 <strong>손대지 않았다</strong>. 누출이 아니기
+    때문이다. train 안의 중복은 가벼운 증강에 가깝다.</p>
+  </div>
+
+  <div class="tw"><table>
+    <caption>db/vest-helmet_crop → db/vest-helmet_crop_dedup · 89초</caption>
+    <thead><tr><th>스플릿</th><th>원본</th><th>제외</th><th>남음</th><th>제외율</th></tr></thead>
+    <tbody>
+      <tr class="hl"><td>train</td><td class="num">6,681</td><td class="num">0</td>
+        <td class="num">6,681</td><td class="num">0.0%</td></tr>
+      <tr><td>valid</td><td class="num">1,427</td><td class="num">169</td>
+        <td class="num">1,258</td><td class="num">11.8%</td></tr>
+      <tr><td>test</td><td class="num">1,418</td><td class="num">189</td>
+        <td class="num">1,229</td><td class="num">13.3%</td></tr>
+      <tr class="hl"><td>합계</td><td class="num">9,526</td><td class="num">358</td>
+        <td class="num">9,168</td><td class="num">3.8%</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tw"><table>
+    <thead><tr><th>검증 항목</th><th>결과</th></tr></thead>
+    <tbody>
+      <tr class="hl"><td>처리 후 스플릿을 넘는 무리</td><td class="num">0개</td></tr>
+      <tr><td>남긴 라벨 파일 SHA-256 대조</td><td class="num">9,168개 중 불일치 0</td></tr>
+      <tr><td>빠진 이미지에 들어 있던 박스</td><td class="num">1,228개 (valid 604 · test 624)</td></tr>
+      <tr><td>기존 작업공간에서 사라진 검수 결과</td><td class="num">0건 (전부 train 작업이라 무사)</td></tr>
+      <tr><td>원본 db/vest-helmet</td><td class="num">읽기만 함 · 9,526 라벨 · 33,110 박스 그대로</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3 class="sh3">점수는 얼마나 부풀려져 있었나</h3>
+  <p class="lede">기존 모델 4개를 <strong>재학습 없이</strong> 같은 스플릿의 두 부분집합에서 따로
+  채점했다. 크롭 효과와 섞이지 않도록 원본 <code>db/vest-helmet</code> 으로 쟀다.</p>
+  <div class="tw"><table>
+    <caption>mAP50 / mAP50-95 · 누출분 = train 에 쌍둥이가 있는 이미지</caption>
+    <thead><tr><th>모델</th><th>스플릿</th><th>누출분</th><th>깨끗한 분</th><th>차이</th><th>전체(기존 보고값)</th></tr></thead>
+    <tbody>
+      <tr><td>n50</td><td>valid</td><td class="num">0.6087 / 0.3272</td><td class="num">0.5551 / 0.2959</td>
+        <td class="num">+0.054 / +0.031</td><td class="num">0.5618 / 0.2995</td></tr>
+      <tr><td>n50</td><td>test</td><td class="num">0.6000 / 0.3198</td><td class="num">0.5465 / 0.2927</td>
+        <td class="num">+0.053 / +0.027</td><td class="num">0.5530 / 0.2958</td></tr>
+      <tr class="hl"><td>n150</td><td>valid</td><td class="num">0.8327 / 0.5402</td><td class="num">0.8085 / 0.5178</td>
+        <td class="num">+0.024 / +0.022</td><td class="num">0.8111 / 0.5204</td></tr>
+      <tr class="hl"><td>n150</td><td>test</td><td class="num">0.8635 / 0.5528</td><td class="num">0.7947 / 0.5037</td>
+        <td class="num">+0.069 / +0.049</td><td class="num">0.8031 / 0.5091</td></tr>
+      <tr><td>n500</td><td>valid</td><td class="num">0.9242 / 0.6819</td><td class="num">0.8902 / 0.6291</td>
+        <td class="num">+0.034 / +0.053</td><td class="num">0.8948 / 0.6358</td></tr>
+      <tr><td>n500</td><td>test</td><td class="num">0.9326 / 0.6768</td><td class="num">0.8749 / 0.6131</td>
+        <td class="num">+0.058 / +0.064</td><td class="num">0.8817 / 0.6207</td></tr>
+      <tr><td>n600</td><td>valid</td><td class="num">0.9263 / 0.6870</td><td class="num">0.9057 / 0.6493</td>
+        <td class="num">+0.021 / +0.038</td><td class="num">0.9082 / 0.6541</td></tr>
+      <tr><td>n600</td><td>test</td><td class="num">0.9428 / 0.6819</td><td class="num">0.8889 / 0.6302</td>
+        <td class="num">+0.054 / +0.052</td><td class="num">0.8946 / 0.6364</td></tr>
+    </tbody>
+  </table></div>
+  <p class="lede"><strong>8회 전부 같은 방향</strong>이다. 누출분이 깨끗한 분보다 mAP50 기준
+  0.021~0.069 높다. 전체 점수에 미친 영향은 그보다 훨씬 작다 — 누출분이 12% 뿐이라
+  <strong>−0.003 ~ −0.009 (상대 −0.3% ~ −1.2%)</strong> 에 그친다.</p>
+
+  <h3 class="sh3">그 격차는 암기인가, 그냥 쉬운 사진인가</h3>
+  <p class="lede">위 표의 '누출분'은 <strong>train 어딘가에 쌍둥이가 있는 이미지</strong>다.
+  그런데 이 모델들은 train 6,681장 중 150~600장만 학습했다. 즉 누출분 대부분은
+  <strong>이 모델이 실제로는 본 적 없는 사진</strong>이다. 그렇다면 격차의 정체가 둘로 갈린다.</p>
+  <div class="tw"><table>
+    <caption>평가셋을 세 갈래로 쪼개 다시 채점 · A−B 가 암기, B−C 가 난이도</caption>
+    <thead><tr><th>모델</th><th>스플릿</th><th>A 학습분의 쌍둥이</th><th>B 미학습분의 쌍둥이</th>
+      <th>C 쌍둥이 없음</th><th>암기 A−B</th><th>난이도 B−C</th></tr></thead>
+    <tbody>
+      <tr class="dim"><td>n150</td><td>valid</td><td class="num">3장 — 표본부족</td>
+        <td class="num">0.8338 (166)</td><td class="num">0.8085 (1258)</td>
+        <td class="num">—</td><td class="num">+0.025</td></tr>
+      <tr><td>n150</td><td>test</td><td class="num">0.8800 (7)</td>
+        <td class="num">0.8632 (151)</td><td class="num">0.7959 (1260)</td>
+        <td class="num">+0.017</td><td class="num">+0.067</td></tr>
+      <tr><td>n500</td><td>valid</td><td class="num">0.9180 (14)</td>
+        <td class="num">0.9241 (155)</td><td class="num">0.8902 (1258)</td>
+        <td class="num">−0.006</td><td class="num">+0.034</td></tr>
+      <tr><td>n500</td><td>test</td><td class="num">0.9493 (24)</td>
+        <td class="num">0.9348 (134)</td><td class="num">0.8755 (1260)</td>
+        <td class="num">+0.015</td><td class="num">+0.059</td></tr>
+      <tr><td>n600</td><td>valid</td><td class="num">0.9657 (16)</td>
+        <td class="num">0.9204 (153)</td><td class="num">0.9057 (1258)</td>
+        <td class="num">+0.045</td><td class="num">+0.015</td></tr>
+      <tr><td>n600</td><td>test</td><td class="num">0.9573 (26)</td>
+        <td class="num">0.9463 (132)</td><td class="num">0.8893 (1260)</td>
+        <td class="num">+0.011</td><td class="num">+0.057</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">읽는 법 — 지금까지의 격차는 대부분 암기가 아니었다</div>
+    <p><strong>난이도(B−C)가 5회 전부 양수</strong>다(+0.015 ~ +0.067, 평균 +0.043).
+    중복되는 사진은 원래 <strong>쉬운 사진</strong>이다 — 여러 번 팔린 스톡 스튜디오 컷이라
+    배경이 깨끗하고 피사체가 크다. 이건 누출과 무관한 성질이다.</p>
+    <p><strong>암기(A−B)는 mAP50 기준으로는 미미</strong>하다(−0.006 ~ +0.045). 당연하다 —
+    A 버킷이 7~26장밖에 안 된다. 이 모델들은 train 의 2~9%만 학습했으므로 누출분의 쌍둥이가
+    학습셋에 들어간 경우가 거의 없다.</p>
+    <p>다만 <strong>mAP50-95 로 보면 이야기가 다르다.</strong> 위치 정밀도까지 보는 이 지표에서
+    A−B 는 <strong>5회 전부 양수 · 평균 +0.087</strong> 이다
+    (n150 test +0.168 · n500 valid +0.049 · n500 test +0.080 · n600 valid +0.078 ·
+    n600 test +0.060). 본 적 있는 사진에서 <strong>박스 좌표를 더 정확히 재현</strong>한다는
+    뜻이고, 이건 암기의 전형적인 흔적이다. 표본이 7~26장이라 확정하진 않지만 방향은 일관된다.</p>
+  </div>
+
+  <h3 class="sh3">그래서 지금까지의 결론은 어떻게 되는가</h3>
+  <div class="rules">
+    <div class="rule-row"><span class="tag t-ok">유효</span>
+      <div><strong>방법 비교는 그대로 유효하다.</strong> 학습 곡선, 액티브 러닝 대조, 절감률 —
+      전부 같은 평가셋에서 잰 상대 비교이고 누출은 모든 조건에 동일하게 걸려 있다.
+      순위가 뒤집힐 여지가 없다.</div></div>
+    <div class="rule-row"><span class="tag t-warn">보정</span>
+      <div><strong>절대값 주장은 소폭 낮춰야 한다.</strong> 지금까지 보고한 mAP50 은 실제보다
+      0.003~0.009 후하다. 절감률·자동승인율도 같은 방향으로 조금씩 후하다.</div></div>
+    <div class="rule-row"><span class="tag t-fail">위험</span>
+      <div><strong>앞으로가 진짜 문제였다.</strong> 최종 목표는 train 6,681장 전량에 자동 라벨을
+      붙이는 것이다. 그 데이터로 학습하면 valid 의 12%, test 의 11% 가 <strong>글자 그대로
+      학습 데이터</strong>가 된다. 지금 잡아서 다행이다.</div></div>
+    <div class="rule-row"><span class="tag t-note">이식</span>
+      <div>총기·과일 데이터셋에도 <strong>같은 검사를 먼저 돌린다</strong>. 웹에서 긁은
+      데이터셋은 이 문제를 거의 항상 갖고 있고, 파일 해시로는 안 잡힌다.
+      <code>dedup_dataset.py</code> 는 도메인과 무관하게 그대로 쓸 수 있다.</div></div>
+  </div>
+</section>
+
+<!-- ══════════ 계획 ══════════ -->
+<!-- ══════════ 연속형 라벨링 ══════════ -->
+<section>
+  <div class="shead"><span class="n">13</span><h2>연속형 라벨링 — 사람과 GPU가 서로 안 기다리게</h2></div>
+  <p class="lede">2026-08-18 사장님이 방향을 정했다. 라벨링하는 동안 GPU가 뒤에서 학습하고,
+  새 모델이 나오면 아직 안 연 이미지를 다시 예측해 둔다. 모델은 VS Code의 코드 자동완성이다.
+  <strong>목표는 mAP가 아니라 사람과 GPU가 서로 기다리지 않는 것.</strong></p>
+
+  <div class="call" style="--mark:var(--note)">
+    <div class="ct">대기시간은 이미 0이다 — 문제는 낡음(staleness)</div>
+    <p>제안서에는 "Prediction Queue를 미리 채워 사람의 대기시간을 0으로"가 있었지만,
+    예측은 <strong>176 img/s</strong>라 6,681장 전량을 <strong>37초</strong>에 다시 만든다.
+    큐가 빌 일이 없으므로 미리 채워둘 필요조차 없다.</p>
+    <p>느린 것은 학습뿐이다. 그래서 사람은 언제나 <em>조금 낡은</em> 모델의 예측을 본다.
+    지표는 대기시간이 아니라 <strong>사람 진도 − 현재 모델의 학습분</strong>이어야 한다.</p>
+  </div>
+
+  <h3 class="sh3">이미 있던 것 — 다시 만들지 않았다</h3>
+  <p>제안서의 지표 대부분은 <code>meta/&lt;split&gt;/&lt;이미지&gt;.json</code>에 이미 들어 있었다.
+  <code>ops.kept/adjusted/deleted</code>가 곧 승인·수정·삭제율이고, <code>ops.seconds</code>가 장당 실측이다.
+  순환 오염 방지도 있었다 — <code>train_model.py</code>는 <strong>meta 기록이 있는 이미지만</strong> 학습에 쓰므로
+  사람이 안 본 예측은 원천적으로 안 들어간다.</p>
+  <p>제안서의 8단계 상태머신(<code>RAW→…→FINAL</code>)은 <strong>만들지 않았다</strong>.
+  "meta 기록이 있으면 확정"이라는 규칙 하나가 같은 일을 하고, 상태가 8개면 불일치 조합을 다루는
+  코드가 상태 수의 제곱으로 는다. 실제로 빠져 있던 것은 하나뿐이었다 —
+  <strong><code>pred_model</code>이 레코드에 없었다</strong>(모델이 작업공간 단위라 이미지마다 다를 수 없었다).</p>
+
+  <h3 class="sh3">학습을 3.4배 빠르게 — 검증이 80%였다</h3>
+  <div class="tw"><table>
+    <caption>학습 에폭 시간 분해 (12에폭 · 정상속도 구간)</caption>
+    <thead><tr><th>학습분</th><th>val=True</th><th>val=False</th><th>검증 몫</th></tr></thead>
+    <tbody>
+      <tr><td>150장</td><td class="num">7.65초/ep</td><td class="num">1.50초/ep</td><td class="num">6.15초 (80%)</td></tr>
+      <tr><td>600장</td><td class="num">9.55초/ep</td><td class="num">4.03초/ep</td><td class="num">5.52초 (58%)</td></tr>
+    </tbody>
+  </table></div>
+  <p>학습 계산은 <strong>0.66초/에폭 + 장당 5.6ms</strong>뿐이다. 검증 5.8초는 학습 장수와 무관하다
+  (valid 1258장 고정). 그래서 150장을 500장으로 늘려도 에폭당 2초 느는 게 전부다.</p>
+
+  <div class="tw"><table>
+    <caption>설정별 검증 — 학습분 150장 · seed 0 · 80에폭 완주 후 best.pt 를 valid 전량으로 재측정</caption>
+    <thead><tr><th>설정</th><th>학습 시간</th><th>mAP50</th><th>mAP50-95</th></tr></thead>
+    <tbody>
+      <tr class="dim"><td>검증 1258장 · 매 에폭 (기준)</td><td class="num">10.2분</td><td class="num">0.8132</td><td class="num">0.5213</td></tr>
+      <tr class="dim"><td>검증 1258장 · 5에폭마다</td><td class="num">4.2분</td><td class="num">0.8124</td><td class="num">0.5213</td></tr>
+      <tr class="dim"><td>검증 400장 · 매 에폭</td><td class="num">5.1분</td><td class="num">0.8124</td><td class="num">0.5213</td></tr>
+      <tr class="hl"><td>검증 400장 · 5에폭마다 <strong>← 채택</strong></td><td class="num">3.0분</td><td class="num">0.8124</td><td class="num">0.5213</td></tr>
+    </tbody>
+  </table></div>
+  <p><strong>3.4배 빨라지고 손해는 mAP50 0.0008</strong> — 잡음(0.002) 이하이고 mAP50-95는 소수점 4자리까지 같다.
+  손해의 원인은 둘로 나눌 수 없다(위 문제 53번). 기준만 <code>epoch 79</code>를 골랐고 나머지 셋은
+  <code>epoch 80</code>을 골랐을 뿐이다.</p>
+  <p>구조는 원래부터 맞았다 — <code>train_model.py</code>가 학습 후 <code>best.pt</code>를
+  <strong>전량으로 다시 채점</strong>해 <code>model.json</code>에 적는다.
+  학습 중 감시는 400장으로 싸게, 보고 숫자는 1258장으로 정확하게.</p>
+
+  <h3 class="sh3">시나리오 — 제로샷 50장으로 시작</h3>
+  <div class="tw"><table>
+    <caption>학습시간 <code>143 + 0.385n</code>초 · 사람 5초/장 가정 (tools/sim_continuous.py)</caption>
+    <thead><tr><th>시각</th><th>모델</th><th>학습분</th><th>사람 진도</th><th>낡음</th><th>초/장</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0분</td><td>제로샷</td><td class="num">—</td><td class="num">0장</td><td class="num">—</td><td class="num">9.7초</td></tr>
+      <tr><td class="num">10.8분</td><td>v1</td><td class="num">50장</td><td class="num">66장</td><td class="num">16장</td><td class="num">7.1초</td></tr>
+      <tr><td class="num">23.0분</td><td>v5</td><td class="num">148장</td><td class="num">184장</td><td class="num">36장</td><td class="num">4.7초</td></tr>
+      <tr><td class="num">39.2분</td><td>v9</td><td class="num">345장</td><td class="num">421장</td><td class="num">76장</td><td class="num">3.3초</td></tr>
+    </tbody>
+  </table></div>
+  <div class="tw"><table>
+    <thead><tr><th>목표</th><th>소요</th><th>모델 갱신</th><th>빈 화면이면</th><th>절감</th></tr></thead>
+    <tbody>
+      <tr><td>500장</td><td class="num">44분</td><td class="num">9번</td><td class="num">1.8시간</td><td class="num">60%</td></tr>
+      <tr><td>1,000장</td><td class="num">1.1시간</td><td class="num">13번</td><td class="num">3.6시간</td><td class="num">70%</td></tr>
+      <tr class="hl"><td><strong>6,681장 (train 전량)</strong></td><td class="num"><strong>4.1시간</strong></td><td class="num">22번</td><td class="num">23.9시간</td><td class="num"><strong>83%</strong></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--note)">
+    <div class="ct">프로젝트의 모양이 바뀐다</div>
+    <p>원래 질문은 <em>"사람 라벨 몇 장이면 되나"</em>였고 답은 150장이었다.
+    연속형에서는 <strong>"전부 해도 4시간"</strong>이 된다.
+    GT가 없는 새 도메인(총기·과일)에서는 어차피 전량 라벨이 필요하므로 이쪽이 실제 쓰임에 맞다.</p>
+    <p><strong>약한 곳:</strong> 편집비용 곡선의 50·300장 지점은 실측이 아니라 <em>보간</em>이다.
+    44분이라는 숫자가 여기 걸려 있다(<code>y11s_n50_random</code>이 있으니 예측 만들어 GT로 재면 확정된다).
+    그리고 12.9초/장은 26장 몰아치기 값이라 4시간 연속이면 사람이 느려진다 — 낙관치다.</p>
+  </div>
+
+  <h3 class="sh3">앵커링 — 정책이 바뀌었다</h3>
+  <p>사장님 판단: <strong>앵커링은 받아들인다.</strong> 목표가 인간과 모델의 협업이므로
+  모델이 그린 것을 사람이 승인하는 것은 결함이 아니라 제품이 작동하는 모습이다.
+  <code>anchor_1_blank</code>/<code>anchor_2_seeded</code> 측정의 <strong>"8% 넘으면 어쩐다"는 판정 조항은 폐기</strong>했다.
+  측정 자체는 목적을 바꿔 남긴다 — 빈 화면 대 시드의 <strong>짝지어진 실측 단가</strong> 비교.
+  지금 절감률은 전부 비용모델 추정이고 시드 받았을 때의 실측이 한 번도 없다.</p>
+  <p><strong>예외 하나:</strong> 채점용 답지(valid/test)는 빈 화면에서 만든다.
+  모델이 도운 답지로 그 모델을 채점하면 점수가 올랐을 때
+  모델이 좋아진 건지 답지가 모델을 닮은 건지 <strong>원리적으로 구분할 수 없다</strong>.
+  이건 측정 없이 규칙으로 끝난다.</p>
+
+  <div class="call" style="--mark:var(--warn)">
+    <div class="ct">미결정 — 블라인드 프로브 5%</div>
+    <p>연속형에서는 v3가 v2가 앵커링한 라벨로 학습되어 편향이 <strong>자기확인 루프</strong>를 돈다.
+    후반에 사람은 <strong>1.9초/장</strong>까지 가는데, 그건 사실상 "다음"을 누르는 속도이고 그 라벨이 곧 데이터셋이 된다.</p>
+    <p>문제는 <strong>Acceptance Rate가 바로 그 루프가 최대화하는 지표</strong>라는 것이다 —
+    승인률↑·장당시간↓인데 품질은 정체할 수 있고, 어느 지표에도 안 잡힌다.
+    대책은 큐의 5%를 예고 없이 빈 화면으로 내보내 시드 받은 것과 비교하는 것.
+    비용은 4.1시간 → 4.4시간. 막는 것이 아니라 <strong>얼마나 되는지 보이게만</strong> 하는 것이라 정책과 충돌하지 않는다.</p>
+  </div>
+
+  <h3 class="sh3">구현 — 1~6단계 완료</h3>
+  <div class="tw"><table>
+    <thead><tr><th>#</th><th>항목</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td class="num">0</td><td>검증 400장의 <code>best.pt</code> 선택 품질 확인</td><td>✅ 손해 0.0008</td></tr>
+      <tr><td class="num">1</td><td><code>train_model.py --val-fast-n / --val-period</code></td><td>✅</td></tr>
+      <tr><td class="num">2</td><td><strong><code>train_worker.py</code></strong> — 백그라운드 학습 워커</td><td>✅</td></tr>
+      <tr><td class="num">3</td><td>스튜디오: N장마다 학습 요청 (<code>live_tick</code>)</td><td>✅</td></tr>
+      <tr><td class="num">4</td><td>새 모델 감지 → 예측 갈아타기 (<code>live_adopt</code> · 3초 폴링)</td><td>✅</td></tr>
+      <tr><td class="num">5</td><td>레코드에 <code>pred_model</code> / <code>pred_model_n</code></td><td>✅</td></tr>
+      <tr><td class="num">6</td><td>상태줄 <code>🤖 v7 · 낡음 52장 · 학습 중</code></td><td>✅</td></tr>
+      <tr class="dim"><td class="num">7</td><td>계기판 (report.html 시간축 그래프)</td><td>데이터는 이미 있음</td></tr>
+      <tr class="dim"><td class="num">8</td><td>블라인드 프로브 5%</td><td>정책 결정 후</td></tr>
+      <tr class="dim"><td class="num">9</td><td>시작 메뉴 진입점</td><td>지금은 <code>live</code>를 손으로 넣어야 함</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="call" style="--mark:var(--note)">
+    <div class="ct">설계 제약 두 가지</div>
+    <p><strong>반드시 별도 프로세스.</strong> 스레드로 하면 ultralytics가 GIL을 잡고 있는 동안 Tkinter UI가 얼어붙는다.</p>
+    <p><strong>통신은 소켓이 아니라 파일로.</strong> <code>work/&lt;작업공간&gt;/jobs/{queued,running,done}</code>.
+    집어가기는 <code>os.rename</code> 한 번이고 파일시스템이 원자성을 보장하므로 워커가 둘이어도 중복 실행이 없다.
+    이 프로젝트는 이미 db/work/export 파일 배치로 상태를 주고받으므로 새로 배울 개념이 없고,
+    워커가 죽어도 요청이 폴더에 남아 있어 다시 띄우면 이어서 한다.</p>
+    <p><strong>밀린 요청은 가장 최근 것만.</strong> 오래된 것부터 처리하면 이미 낡은 라벨로 학습하게 된다.
+    나머지는 <code>superseded</code>로 넘긴다 — 최신 요청이 그 시점까지 확정된 라벨을 전부 포함하기 때문이다.</p>
+  </div>
+
+  <h3 class="sh3">실측으로 확인한 것</h3>
+  <div class="tw"><table>
+    <thead><tr><th>대상</th><th>확인한 것</th></tr></thead>
+    <tbody>
+      <tr><td>큐 규약</td><td>요청 3개를 쌓으면 최신 것만 실행하고 2개는 <code>superseded</code>. 재claim 없음.
+        <code>running</code>에 남은 것을 기동 시 큐로 되돌리는 것까지 동작.</td></tr>
+      <tr class="hl"><td>전 구간 한 바퀴</td><td>요청 → 학습 → <code>make_preds</code> → <code>done</code> →
+        스튜디오가 주워 <code>pred_dir</code> 교체.
+        예측 <strong>6,655개 = 6,681장 − 학습에 쓴 26장</strong> — 학습 이미지 제외가 실제로 동작한다.</td></tr>
+      <tr><td>낡음 계산</td><td>확정 46장 · 모델 학습분 26장 → 낡음 20장.</td></tr>
+      <tr><td>하위 호환</td><td><code>live</code>가 없는 기존 작업공간 5개는 아무 일도 일어나지 않는다.</td></tr>
+    </tbody>
+  </table></div>
+
+  <p class="lede" style="margin-top:1em">계획 원문: <code>docs/continuous_labeling_plan.md</code> ·
+  도구: <code>tools/bench_train_time.py</code>(시간 분해) · <code>tools/sim_continuous.py</code>(시나리오)</p>
+</section>
+
+<!-- ══════════ 6. 다음 단계 ══════════ -->
+<section>
+  <div class="shead"><span class="n">14</span><h2>다음 단계</h2></div>
+  <div class="plan">
+    <div class="pstep"><span class="ph">P0</span>
+      <div><h4>평가셋 봉인</h4><p>valid 에서 stride 7 로 204장을 떼어 채점판으로 확정.
+      기존 VLM 실험의 50장(stride 28)을 부분집합으로 포함해 이전 측정과 연속성을 유지한다.
+      학습 표본은 train 스플릿에서만 뽑으므로 오염 경로가 없다.</p></div>
+      <span class="st t-ok">완료</span></div>
+    <div class="pstep"><span class="ph">P1</span>
+      <div><h4>Zero-shot 바닥값 측정</h4><p>YOLO-World 프롬프트 쌍 30가지 격자 탐색.
+      결과 F1 0.493 / 절감 25% 가 천장. 조끼 실패는 검출이 아니라 규약 불일치로 진단됨.</p></div>
+      <span class="st t-ok">완료</span></div>
+    <div class="pstep"><span class="ph">P2</span>
+      <div><h4>학습 곡선</h4><p>등차 50 으로 10라운드(50→600장). 목표 65% 는 <strong>150장</strong>에서 달성,
+      500장에서 절감 80.5% · 자동승인 79.1%.</p></div>
+      <span class="st t-ok">완료</span></div>
+    <div class="pstep"><span class="ph">P2b</span>
+      <div><h4>액티브 러닝 대조</h4><p>불확실도+다양성 선별이 무작위를 이기지 못했다(4회 시행 전부보다 낮음, 단 p≈0.16).
+      원인은 <strong>무작위가 아직 천장에 닿지 않았기 때문</strong>. <strong>무작위 선별 채택 확정</strong>,
+      우선순위 큐 구조는 불필요.</p></div>
+      <span class="st t-ok">완료</span></div>
+    <div class="pstep"><span class="ph">P3</span>
+      <div><h4>편집 UI 제작</h4><p>예측/GT 오버레이, 박스 그리기·수정·삭제, 신뢰도 3분류,
+      작업공간 관리, 출처 태그 기록, 보고서, 내보내기까지 완성.
+      <code>yolo_dataset_studio.py</code> 3,687줄. 스모크 테스트 116항목 + 다이얼로그 8종 통과.
+      부수로 <code>db/work/models/export</code> 4구역 재편과 GT 물리 봉인을 마쳤다.</p></div>
+      <span class="st t-ok">완료</span></div>
+    <div class="pstep"><span class="ph">P3b</span>
+      <div><h4>데이터 품질 교정 (계획에 없던 작업)</h4><p>라벨링을 시작하자마자 GT 오류와
+      반사 패딩이 드러나 먼저 처리했다. 규약 문서 4개 규칙 확정,
+      출처 태그 재정의, <code>db/vest-helmet_crop</code> 생성(1,507장 수정 · 유령 라벨 270개 제거).</p></div>
+      <span class="st t-ok">완료</span></div>
+    <div class="pstep"><span class="ph">P3c</span>
+      <div><h4>데이터 누출 제거 (계획에 없던 작업)</h4><p>사장님이 valid 에서 train 사진을 발견.
+      dHash+픽셀 검출로 <strong>스플릿 간 중복 334무리</strong> 확인,
+      <code>dedup_dataset.py</code> 로 <strong>358장 제외</strong>해
+      <code>db/vest-helmet_crop_dedup</code> 생성(train 손실 0).
+      기존 모델 4개 재채점으로 거품 <strong>−0.003~−0.009 mAP50</strong> 확인.</p></div>
+      <span class="st t-ok">완료</span></div>
+    <div class="pstep"><span class="ph">P3d</span>
+      <div><h4>사람 단가 실측 — 진행 중</h4><p>1차 26장 완료:
+      <strong>3.81초/박스</strong>(장별 중앙값 4.64초). 합의값 5초와 사실상 같다.
+      남은 것은 <strong>빈 화면 대 시드의 짝지어진 실측 단가</strong> —
+      같은 30장을 <code>anchor_1_blank</code>와 <code>anchor_2_seeded</code>로 두 번 라벨한다.
+      지금 절감률은 전부 비용모델 추정이고 <strong>시드 받았을 때의 실측이 한 번도 없다</strong>.
+      <br>※ 원래 목적이던 "앵커링 8% 판정"은 <strong>폐기</strong>됐다 —
+      사장님이 앵커링을 정책으로 수용했다(섹션 13).</p></div>
+      <span class="st t-note">다음</span></div>
+    <div class="pstep"><span class="ph">P3e</span>
+      <div><h4>정리된 데이터셋으로 재기준화 — 1호 완료</h4><p><code>train_model.py</code> 제작 완료.
+      <code>y11s_n150_dedup</code> 학습(10분 10초) → <strong>mAP50 0.8124</strong>.
+      같은 150장으로 학습한 구 모델과 같은 평가셋에서 대조하니 <strong>−0.002</strong>,
+      즉 정리는 점수를 바꾸지 않았고 <strong>측정의 신뢰만 바꿨다</strong>.
+      남은 것: n50/500/600 재학습으로 곡선 전체 재기준화 → 예측 재생성 → 작업공간 재생성.
+      (기존 4개 모델은 <code>patience=25</code> 였으나 모두 80에폭을 완주해 조기 종료가
+      발동한 적이 없다 — 새 설정과 비교가 공정하다.)</p></div>
+      <span class="st t-note">진행 중</span></div>
+    <div class="pstep"><span class="ph">P4</span>
+      <div><h4>전량 재구성 및 판정</h4><p>9,526장 전량 자동 라벨 → 봉인 GT와 대조 → 두 관문 통과 여부 판정.
+      <strong>단, 채점 기준을 다시 정해야 한다</strong> — GT 에 오류가 있음이 확인됐으므로
+      평가셋 204장을 사람이 직접 다시 라벨하는 안이 검토 중이다.</p></div>
+      <span class="st t-warn">대기</span></div>
+    <div class="pstep"><span class="ph">P3f</span>
+      <div><h4>seg 데이터셋과 seg 모델 — 완료</h4><p><code>db/vest-helmet_crop_dedup_seg</code>
+      생성(SAM2.1-b · 9,168장 · 박스 31,612 → 마스크 31,612 · 12분).
+      같은 150장으로 <code>y11sseg_n150_dedup</code> 학습 → 마스크 mAP50 <strong>0.751</strong>,
+      박스 mAP50-95 가 detect 판보다 <strong>+0.040</strong>.
+      남은 것: 사람이 마스크를 검수해야 '진짜 분할 성능'을 잴 수 있다.</p></div>
+      <span class="st t-ok">완료</span></div>
+    <div class="pstep"><span class="ph">P3g</span>
+      <div><h4>seg 라벨 품질 — 조사 완료, 자동 수정은 중단</h4><p>불량 후보를 고르는 신호를 셋 비교:
+      <strong>프롬프트 섭동 안정성 AUC 0.966</strong> · SAM 예측 IoU 0.677 ·
+      <strong>폴리곤 점 개수(공짜)</strong> 가 4.17% 로 좁혀 줌.
+      고치는 방법 셋(모폴로지·크롭·크롭+Lanczos)은 <strong>전부 실패</strong>(개선 16 vs 악화 18).
+      실질 불량 약 2%(622개)를 안고 가기로 결정.
+      <strong>다시 손대려면 사람이 봐야 하고, 그러려면 폴리곤 편집 기능이 필요하다</strong>
+      (현재 스튜디오는 폴리곤 선택·삭제만 가능).</p></div>
+      <span class="st t-ok">완료</span></div>
+    <div class="pstep"><span class="ph">P6</span>
+      <div><h4>연속형 라벨링 — 1~6단계 완료</h4><p>사람이 라벨링하는 동안 GPU가 학습하고
+      새 모델이 나오면 예측을 다시 깐다. <code>train_worker.py</code>(별도 프로세스 · 파일 큐),
+      <code>train_model.py --val-fast-n 400 --val-period 5</code>(학습 10.2분 → <strong>3.0분</strong>),
+      스튜디오의 <code>live_tick</code>/<code>live_adopt</code>/상태줄까지 동작 확인.
+      남은 것: 계기판 · 블라인드 프로브 · 시작 메뉴 진입점.
+      <strong>지금은 <code>workspace.json</code>에 <code>live</code>를 손으로 넣어야 켜진다.</strong></p></div>
+      <span class="st t-note">진행 중</span></div>
+    <div class="pstep"><span class="ph">P5</span>
+      <div><h4>이식 검증</h4><p>새 도메인(총기·과일)에 <strong>모델이 아니라 절차만</strong> 옮겨 곡선이 재현되는지 확인.
+      여기서 재현되면 이 프로그램은 역할을 다한 것이다.<br>
+      <strong>새 도메인의 0번 작업은 <code>dedup_dataset.py</code></strong> — 웹에서 모은
+      데이터셋은 이 문제를 거의 항상 갖고 있다.</p></div>
+      <span class="st t-warn">대기</span></div>
+  </div>
+</section>
+
+<!-- ══════════ 7. 환경 ══════════ -->
+<section>
+  <div class="shead"><span class="n">15</span><h2>실행 환경</h2></div>
+  <div class="tw"><table>
+    <thead><tr><th>항목</th><th>버전 / 사양</th><th>비고</th></tr></thead>
+    <tbody>
+      <tr><td>CPU</td><td>Ryzen 7 9700X · 8코어 16스레드</td><td>디코드 포화 지점 12워커 / 4,792 img/s</td></tr>
+      <tr><td>GPU</td><td>RTX 5070 Ti · 16 GB</td><td>sm_120 · 추론 시 27%만 사용</td></tr>
+      <tr><td>torch</td><td>2.12.0.dev · cu130</td><td>—</td></tr>
+      <tr><td>ultralytics</td><td>8.4.120</td><td>SAM 3 지원 (8.3.237+)</td></tr>
+      <tr><td>OpenCV</td><td>4.13.0</td><td>렌더 백엔드</td></tr>
+      <tr><td>Pillow</td><td>12.2.0</td><td>캔버스 블리터</td></tr>
+      <tr><td>VLM 서버</td><td>LM Studio · llama.cpp</td><td>gemma-4-12b-it-qat · NVFP4</td></tr>
+      <tr><td>VLM 처리량</td><td>8.9 초/장 (3 병렬)</td><td>9,526장 환산 ≈ 23.4 시간</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer>
+  기록 2026-08-14 ~ 08-18 · vest-helmet (Roboflow, CC BY 4.0) · 문제 53건<br>
+  측정 원문: vlm_raw.json · vlm_struct_raw.json · crop_test.json · zoom_sweep.json ·
+  resample.json · threshold_scan.json · train_tune.json ·
+  repair_manifest.json · dedup_manifest.json<br>
+  도구: yolo_dataset_studio.py — 시각화 · 룰 검수 · 박스 편집 · 작업공간 · 레이어 · 보고서 · 내보내기<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;make_preds.py — 예측 생성 (선행 디코드, 176 img/s)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;make_masks.py — bbox → SAM 마스크 · --as-dataset 로 seg 데이터셋 생성<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;repair_padding.py — 반사 패딩 검출·잘라내기 + 라벨 좌표 이동<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;dedup_dataset.py — 스플릿 간 중복 검출·제거 (dHash + 픽셀 확인)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;train_model.py — 학습 + 내력 기록 (출처 분해 · 사람 시간 · 누출 검사)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;check_contrast.py — UI 글자/바탕 대비 검사 (105개 조합)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tools/ — 마스크 품질 측정 스크립트 7종 (안정성 · 변환방식 · 라벨vs모델 · 수정비교 · VLM격자)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;analyze_anchor.py — 앵커링 대조<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;train_worker.py — 연속형 백그라운드 학습 워커 (파일 큐 · 학습 후 예측 재생성)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tools/bench_train_time.py — 학습 시간 분해 (검증 / 학습계산 / 워커 spawn)<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;tools/sim_continuous.py — 연속형 시나리오 시뮬레이터<br>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;launch.ps1 — 런처 (중복 실행 감지 · 오류 기록)<br>
+  규약: docs/labeling_convention.md — 판정 기록 (R1~R4 확정, Q2~Q4 미정)<br>
+  계획: docs/continuous_labeling_plan.md — 연속형 라벨링 설계·실측·구현 순서<br>
+  데이터 계보: vest-helmet (9,526 · 봉인) → _crop (9,526 · 유령 라벨 −270)
+  → _crop_dedup (9,168 · 중복 −358) → _crop_dedup_seg (9,168 · 박스를 폴리곤으로)<br>
+  GT 무결성: db/ 9,526개 라벨 SHA-256 대조 · 이동 전후 19,056개 파일 일치 · OS 읽기전용 ·
+  파생본 생성 시 남긴 라벨 전량 재대조 (불일치 0)
+</footer>
+
+</div>
+
+
