@@ -16,13 +16,6 @@ cd labeling_studio    # 라벨을 만들 때
 cd model_compare      # 모델을 학습·비교할 때
 ```
 
-## 폴더를 나눈 이유
-
-산출물 제외 규칙(`.gitignore`)이 서로 다르다.
-루트에 몰아넣으면 한쪽 규칙이 저장소 전체에 걸려 다른 쪽 파일까지 지배한다.
-루트 `.gitignore` 에는 파이썬·윈도우 공통 규칙만 두고,
-데이터셋·가중치·산출물 규칙은 각 폴더가 자기 것만 책임진다.
-
 ## 데이터
 
 `labeling_studio/db`, `labeling_studio/work`, `model_compare/Data` 는 용량이 커서 git 에 없다.

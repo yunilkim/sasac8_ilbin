@@ -146,6 +146,7 @@ model_compare/
 ├── step3_eval.py           # 평가 - mAP(박스 모델), pixel mIoU/Dice(U-Net)
 ├── step4_predict.py        # 테스트 이미지 추론 후 결과 이미지 저장
 ├── step5_compare.py        # 세 모델 비교표/그래프 생성 (프로젝트 목표)
+├── step6_sum_result.py     # 원본 + 세 모델 결과를 한 장으로 합치기
 ├── config/
 │   ├── run_config.py       # 어떤 모델을 실행할지 (RUN_MODELS), 가중치 경로
 │   ├── detect.yaml         # detection 데이터셋 경로 + 클래스
@@ -184,11 +185,15 @@ python step2_train.py      # 2. 학습
 python step3_eval.py       # 3. 평가
 python step4_predict.py    # 4. 테스트 이미지 추론
 python step5_compare.py    # 5. 세 모델 비교
+python step6_sum_result.py # 6. 원본 + 세 결과를 한 장으로 합치기
 ```
 
 가중치가 없는 모델은 평가와 추론에서 건너뛰고 안내만 찍는다.
 비교(step5)는 세 모델이 다 학습돼 있을 때만 돈다.
 step5 는 평가를 자기가 다시 계산하니까 step3 을 건너뛰어도 된다.
+
+step6 은 step4 의 결과 이미지를 원본과 나란히 붙여 `result/sum_result/` 에 저장한다.
+수치로는 안 보이는 차이 - 어떤 객체를 놓쳤는지, 경계가 어떻게 다른지 - 를 눈으로 본다.
 
 ### 실행할 모델 정하기
 
@@ -368,16 +373,6 @@ yolov8n-seg 는 객체마다 마스크를 주고 U-Net 은 지도 한 장을 준
 `Preprocessing/check_dataset.py` 의 `SEGMENT_DATASET`, `config/segment.yaml` 의 `path`,
 `step2_train.py` 의 `SEGMENT_DATASET`.
 
-### 모델을 각각 다른 PC 에서 학습했다면
-
-`runs/` 폴더는 옮길 필요가 없다. step3 부터 step5 까지 보는 건 두 가지뿐이다.
-
-- `result/weights/` 의 가중치 3개 (`detect_best.pt`, `segment_best.pt`, `unet_best.pth`)
-- `result/train_log.csv` 의 해당 줄 (없으면 학습시간 칸만 0 이 된다)
-
-평가는 비교를 돌리는 PC 에서 전부 다시 계산한다.
-
 ### 참고
 
 - 클래스 이름(`names`)은 `config/*.yaml` 과 데이터셋의 `data.yaml` 이 순서까지 같아야 한다.
-- 설계 참고 문서: `ref/yolov8n_vest_helmet_implementation_plan.md`
