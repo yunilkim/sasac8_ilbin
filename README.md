@@ -16,14 +16,47 @@ cd labeling_studio    # 라벨을 만들 때
 cd model_compare      # 모델을 학습·비교할 때
 ```
 
-## 폴더를 나눈 이유
+## 결과 미리보기
 
-산출물 제외 규칙(`.gitignore`)이 서로 다르다.
-루트에 몰아넣으면 한쪽 규칙이 저장소 전체에 걸려 다른 쪽 파일까지 지배한다.
-루트 `.gitignore` 에는 파이썬·윈도우 공통 규칙만 두고,
-데이터셋·가중치·산출물 규칙은 각 폴더가 자기 것만 책임진다.
+![세 모델 비교](docs/sample_result.jpg)
 
-## 데이터
+같은 사진에 세 모델을 돌린 결과다. 어두운 터널에 작업자가 겹쳐 선 어려운 장면이라
+차이가 잘 드러난다.
+
+박스를 내는 두 모델은 작업자를 하나씩 구분하지만 뒤쪽에 겹친 사람은 놓친다.
+U-Net 은 박스도 확신도도 없이 조끼와 헬멧 영역을 통째로 칠한다.
+가려진 사람까지 칠하지만 누가 누구인지는 구분하지 못한다. 시맨틱 분할의 성질이다.
+
+`model_compare/step6_sum_result.py` 로 만든다.
+수치 비교는 [`model_compare/README.md`](model_compare/README.md#결과) 를 본다.
+
+## 데이터셋
+
+[vest-helmet (Roboflow Universe)](https://universe.roboflow.com/uhhh/vest-helmet-wlbch) 를 쓴다.
+원본 이미지는 640×640, 클래스는 `reflective_jacket` 과 `safety_helmet` 둘이다.
+
+원본을 손봐서 세 벌을 둔다.
+
+| 데이터셋 | train | valid | test | 합계 | 라벨 |
+|----------|-------|-------|------|------|------|
+| `vest-helmet.v1i_roboflow_origin` | 6,681 | 1,427 | 1,418 | 9,526 | 원본 (비교용 보관) |
+| `vest-helmet_crop_dedup` | 6,681 | 1,258 | 1,230 | 9,169 | 박스 (detection) |
+| `vest-helmet_crop_dedup_seg` | 6,681 | 1,258 | 1,229 | 9,168 | 폴리곤 (segmentation) |
+
+- **crop** — 이미지에 붙어 있던 반사 패딩을 잘라냈다. 그래서 640×640 이 아닌 이미지가 섞인다.
+- **dedup** — split 사이에 겹치는 이미지를 뺐다. valid·test 가 원본보다 줄어든 이유다.
+
+segmentation 쪽 test 가 1장 적다. 비교는 양쪽에 다 있는 이미지로만 하므로 결과에는 영향이 없다.
+
+객체 수는 `vest-helmet_crop_dedup_seg` 기준이다.
+
+| split | reflective_jacket | safety_helmet | 합계 |
+|-------|-------------------|---------------|------|
+| train | 10,419 | 12,661 | 23,080 |
+| valid | 1,885 | 2,355 | 4,240 |
+| test | 1,886 | 2,405 | 4,291 |
+
+헬멧이 조끼보다 개수는 많지만 하나하나가 작아서, 픽셀로 세면 전체의 3% 밖에 되지 않는다.
 
 `labeling_studio/db`, `labeling_studio/work`, `model_compare/Data` 는 용량이 커서 git 에 없다.
 각자 로컬에 두고 쓴다.
