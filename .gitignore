@@ -196,37 +196,12 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-ref/
-data/
+### 개발 도구 ###
 conductor/
 superpowers/
 
-### 프로젝트 산출물 (푸시 대상에서 제외) ###
-# 데이터셋: 이미지/라벨 대용량이므로 추적하지 않음 (Windows 대소문자 대비 둘 다 명시)
-Data/
-
-# 모델 가중치 / 변환 모델
-*.pt
-*.pth
-*.onnx
-*.engine
-
-# 이미지 산출물
-*.jpg
-*.jpeg
-*.png
-
-# Ultralytics 학습 출력
-runs/
-
-# 추론/평가 산출물 (폴더 구조만 유지)
-result/*
-!result/.gitkeep
-
-# README 가 참조하는 결과 파일은 예외로 추적한다.
-# 위 result/* 보다 아래에 있어야 예외가 적용된다 (마지막에 일치한 규칙이 이긴다)
-!result/compare.csv
-!result/compare_box.jpg
-!result/compare_pixel.jpg
-!result/eval_scores.csv
-!result/train_log.csv
+### 프로젝트별 규칙은 각 폴더의 .gitignore 에서 관리한다 ###
+# 데이터셋, 가중치, 산출물 규칙을 여기에 두면 저장소 전체에 적용돼
+# 다른 프로젝트 폴더까지 지배한다.
+#   model_compare/.gitignore
+#   labeling_studio/.gitignore

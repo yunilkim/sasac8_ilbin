@@ -2,7 +2,7 @@
 # detection 라벨 : <클래스> <cx> <cy> <w> <h>
 # segment 라벨   : <클래스> <x1> <y1> <x2> <y2> ... (폴리곤 꼭짓점, 0~1 정규화)
 
-path: C:\Leacture\DL\sasac8_ilbin\Data\vest-helmet_crop_dedup_seg
+path: C:\Leacture\DL\sasac8_ilbin\model_compare\Data\vest-helmet_crop_dedup_seg
 train: train/images
 val: valid/images
 test: test/images

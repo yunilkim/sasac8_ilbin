@@ -1,0 +1,38 @@
+# ─────────────────────────────────────────────────────────────
+#  model_compare 산출물
+# ─────────────────────────────────────────────────────────────
+#  이 규칙은 model_compare/ 안에만 적용된다.
+#  저장소 전체에 걸리는 규칙(파이썬/윈도우 공통)은 루트 .gitignore 에 있다.
+
+# 데이터셋: 이미지/라벨이 대용량이라 추적하지 않는다
+Data/
+data/
+
+# 설계 참고 문서
+ref/
+
+# 모델 가중치 / 변환 모델
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# 이미지 산출물
+*.jpg
+*.jpeg
+*.png
+
+# Ultralytics 학습 출력
+runs/
+
+# 추론/평가 산출물 (폴더 구조만 유지)
+result/*
+!result/.gitkeep
+
+# README 가 참조하는 결과 파일은 예외로 추적한다.
+# 위 result/* 보다 아래에 있어야 예외가 적용된다 (마지막에 일치한 규칙이 이긴다)
+!result/compare.csv
+!result/compare_box.jpg
+!result/compare_pixel.jpg
+!result/eval_scores.csv
+!result/train_log.csv
