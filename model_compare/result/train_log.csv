@@ -1,0 +1,8 @@
+﻿날짜,모델,실행폴더,epochs,patience,imgsz,batch,학습시간(분),mAP50
+2026-08-15 15:56,detect,./runs/detect/vest_helmet_detect,50,없음,640,16,95.4,0.9625
+2026-08-18 0:19,detect,C:\Leacture\DL\sasac8_ilbin\runs\detect\vest_helmet_detect-2,100,15,640,16,180.7,0.9659
+2026-08-18 10:59,segment,C:\Leacture\DL\sasac8_ilbin\runs\segment\vest_helmet_seg,1,15,640,16,7.4,0.7341
+2026-08-18 11:51,unet,./runs/unet\vest_helmet_unet,1,7,640,16,21.3,0.4059
+2026-08-19 0:25,detect,C:\Leacture\DL\sasac8_ilbin\runs\detect\vest_helmet_detect-3,100,15,640,16,531.2,0.9644
+2026-08-19 3:53,segment,C:\Leacture\DL\sasac8_ilbin\runs\segment\vest_helmet_seg-4,100,15,640,16,279.7,0.9557
+2026-08-19 13:16,unet,./runs/unet\vest_helmet_unet2,96,15,640,16,1037.7,0.778

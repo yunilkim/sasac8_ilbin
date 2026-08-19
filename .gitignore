@@ -196,7 +196,12 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-ref/
-data/
+### 개발 도구 ###
 conductor/
 superpowers/
+
+### 프로젝트별 규칙은 각 폴더의 .gitignore 에서 관리한다 ###
+# 데이터셋, 가중치, 산출물 규칙을 여기에 두면 저장소 전체에 적용돼
+# 다른 프로젝트 폴더까지 지배한다.
+#   model_compare/.gitignore
+#   labeling_studio/.gitignore

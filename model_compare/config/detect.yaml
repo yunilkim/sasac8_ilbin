@@ -1,0 +1,10 @@
+# yolov8n 라벨 데이터셋 정의 파일로 학습/평가 시 data를 인자로 넘긴다.
+
+path: C:\Leacture\DL\sasac8_ilbin\model_compare\Data\vest-helmet_crop_dedup
+train: train/images
+val: valid/images
+test: test/images
+
+names:
+  0: reflective_jacket
+  1: safety_helmet
