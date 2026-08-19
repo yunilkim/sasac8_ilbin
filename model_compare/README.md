@@ -40,7 +40,11 @@ yolov8n-seg 와 같은 인스턴스 분할이라 대비가 약해서 시맨틱 �
 | box_mIoU | 0.8092 | 0.8125 |
 
 라벨을 폴리곤으로 바꿔도 박스 성능은 거의 그대로다.
-폴리곤 라벨을 쓰는 이유는 박스를 더 잘 치기 위해서가 아니라 픽셀 단위 결과를 얻기 위해서다.
+찾는 개수는 detect 가 조금 앞서고(Recall) 박스를 정밀하게 치는 건 seg 가 조금 앞서는데
+(mAP50-95, box_mIoU) 둘 다 1~2%p 안쪽이라 두 모델의 성능은 동일한것으로 봐도 무방하다.
+
+다만 폴리곤 라벨을 쓰는 이유는 박스를 더 잘 치기 위해서가 아니라 픽셀 단위 결과를 얻기 위해서다.
+만드는 비용은 박스보다 훨씬 크니, 픽셀이 필요 없으면 박스 라벨로 충분하다.
 
 ### 픽셀 기준
 
@@ -66,13 +70,60 @@ U-Net 은 객체를 구분하지 않아서 이 값을 낼 수 없다. 시맨틱 
 | FPS | 174.6 | 141.7 | 102.7 |
 | 모델크기(MB) | 5.96 | 6.47 | 93.34 |
 
+### 다른 데이터셋과 비교
+
+Roboflow Universe 의 안전장구 데이터셋 7개와 견줘 본다.
+비교 대상이 전부 detection 이라 yolov8n 만 놓고 본다.
+
+| 지표 | 유사 7개 평균 | 최대 | 최소 | yolov8n |
+|------|--------------|------|------|---------|
+| mAP@50 | 91.59 | 97.50 | 87.70 | **95.16** |
+| Precision | 91.73 | 96.50 | 85.20 | **92.31** |
+| Recall | 87.01 | 94.00 | 81.40 | **90.67** |
+
+세 지표 모두 평균 위, 최대 아래다. mAP 는 8개 중 2위다.
+Precision 은 평균과 거의 같은데(+0.58%p) Recall 이 평균보다 3.66%p 높다.
+놓치는 걸 줄인 쪽에서 점수를 벌었다.
+
+**이 문제 영역에서 통상 나오는 범위 안에 들어왔다는 확인 용도로만 사용한다..**
+
+| 데이터셋 | mAP@50 | Precision | Recall |
+|----------|--------|-----------|--------|
+| [robot-vest](https://universe.roboflow.com/politeknik-pertanian-negeri-samarinda/robot-vest) | 97.5 | 96.5 | 94.0 |
+| [helmet-fkbjb](https://universe.roboflow.com/cuadrados/helmet-fkbjb) | 94.2 | 94.1 | 91.2 |
+| [gsafety-helmet-2](https://universe.roboflow.com/imageprocessing-project/gsafety-helmet-2) | 92.3 | 92.2 | 88.9 |
+| [helmet-6zabc](https://universe.roboflow.com/los-workspace-kfj0b/helmet-6zabc) | 92.1 | 91.6 | 87.2 |
+| [vest-zsuuy](https://universe.roboflow.com/ppe1-ppe2/vest-zsuuy) | 89.5 | 85.2 | 84.7 |
+| [gsafety-helmet](https://universe.roboflow.com/imageprocessing-project/gsafety-helmet) | 87.8 | 91.6 | 81.4 |
+| [helmet-s8xji](https://universe.roboflow.com/gtr34-bu1er/helmet-s8xji) | 87.7 | 90.9 | 81.7 |
+
 ### 정리
 
+박스만 놓고 보면 yolov8n 과 yolov8n-seg 는 사실상 동률이다.
+**seg 를 쓰는 이유는 박스 성능이 아니라 픽셀 결과를 낼 수 있다는 것 하나다.**
+
 U-Net 은 yolov8n-seg 보다 14배 무겁고 1.4배 느린데 픽셀 정확도는 오히려 낮다.
-이 정도 데이터에서는 yolov8n-seg 하나로 박스와 픽셀을 다 감당한다.
+탐지로 대상을 먼저 좁히고 그 안에서만 마스크를 그리는 구조가,
+화면 전체를 한 번에 분류하는 구조보다 이 데이터에서 유리했던 것으로 보인다.
+
+| 필요한 것 | 고를 모델 | 근거 |
+|-----------|-----------|------|
+| 착용 여부만 판정 | `yolov8n` | 174.6 FPS 로 가장 빠르고 라벨링 비용도 싸다 |
+| 착용 여부 + 영역 | `yolov8n-seg` | 박스 성능은 그대로면서 픽셀까지 낸다 |
+| 픽셀만 필요 | `yolov8n-seg` | U-Net 보다 14배 가볍고 정확도도 높다 |
 
 원본 수치는 `result/compare.csv`, 그래프는 `result/compare_box.jpg` 와
 `result/compare_pixel.jpg` 에 있다.
+
+### 이 결과의 조건
+
+클래스 2개, 대상이 크고 색이 뚜렷하고, 학습 6,681장, 입력은 640×640 으로 통일했다.
+클래스가 많아지거나 대상이 작아지면 결과가 달라질 수 있다.
+데이터셋 구성은 [저장소 루트 README](../README.md#데이터셋) 를 본다.
+
+체급도 같지 않다. U-Net 은 ResNet34 인코더라 93MB 인데 yolov8n-seg 는 6.5MB 다.
+14배 무거운 쪽이 졌다는 점에서 결과의 무게가 커지지만,
+같은 체급끼리 견준 비교는 아니라는 반론도 가능하다.
 
 ---
 
