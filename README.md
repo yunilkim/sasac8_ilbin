@@ -20,14 +20,6 @@ cd model_compare      # 모델을 학습·비교할 때
 
 ![세 모델 비교](docs/sample_result.jpg)
 
-같은 사진에 세 모델을 돌린 결과다. 어두운 터널에 작업자가 겹쳐 선 어려운 장면이라
-차이가 잘 드러난다.
-
-박스를 내는 두 모델은 작업자를 하나씩 구분하지만 뒤쪽에 겹친 사람은 놓친다.
-U-Net 은 박스도 확신도도 없이 조끼와 헬멧 영역을 통째로 칠한다.
-가려진 사람까지 칠하지만 누가 누구인지는 구분하지 못한다. 시맨틱 분할의 성질이다.
-
-`model_compare/step6_sum_result.py` 로 만든다.
 수치 비교는 [`model_compare/README.md`](model_compare/README.md#결과) 를 본다.
 
 ## 데이터셋
