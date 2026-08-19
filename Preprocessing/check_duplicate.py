@@ -1,21 +1,15 @@
 """
-역할: train / valid / test 사이에 같은 이미지가 들어있는지(split 간 중복) 검사한다.
-
-왜 중요한가
-  train 에서 배운 이미지가 test 에도 있으면, 모델은 답을 외운 채로 시험을 보는 셈이 된다.
-  성능이 실제보다 높게 나오므로 학습 전에 반드시 확인해야 한다.
+train / valid / test 사이에 같은 이미지가 들어있는지(split 간 중복) 검사
 
 두 가지 방법을 모두 돌려 결과를 비교한다.
-  1) 파일명 기준   : 확장자를 뗀 이름이 같으면 중복
-                     -> 즉시 끝나지만, Roboflow 는 이름 뒤에 해시를 붙이기 때문에
+1) 파일명 기준   : 확장자를 뗀 이름이 같으면 중복
+                    -> 즉시 끝나지만, Roboflow 는 이름 뒤에 해시를 붙이기 때문에
                         같은 사진이라도 이름이 달라서 거의 못 잡는다.
-  2) 이미지 유사도 : 사진을 8x8 흑백으로 줄여 '평균보다 밝은가'를 64비트로 적는다(average hash).
-                     크기나 압축이 달라도 같은 사진이면 같은 값이 나온다.
-                     다만 8x8 은 너무 거칠어서 '구도만 비슷한 다른 사진'도 같다고 나온다.
-                     그래서 해시가 같은 것끼리 64x64 로 다시 비교해서(픽셀 평균 차이, MAD)
-                     정말 같은 사진인지 확인한다. 이 두 단계를 거쳐야 오탐이 걸러진다.
-
-split 내부의 중복은 보지 않는다. (train 안의 중복은 성능 평가를 속이지 않는다)
+2) 이미지 유사도 : 사진을 8x8 흑백으로 줄여 '평균보다 밝은가'를 64비트로 적는다(average hash).
+                    크기나 압축이 달라도 같은 사진이면 같은 값이 나온다.
+                    다만 8x8 은 너무 거칠어서 '구도만 비슷한 다른 사진'도 같다고 나온다.
+                    그래서 해시가 같은 것끼리 64x64 로 다시 비교해서(픽셀 평균 차이, MAD)
+                    정말 같은 사진인지 확인한다. 이 두 단계를 거쳐야 오탐이 걸러진다.
 """
 
 import csv
@@ -41,10 +35,8 @@ VERIFY_SIZE = 64
 MAD_MAX = 18.0
 
 
+# 데이터셋 이미지 한곳으로 모으기
 def list_images(dataset_dir):
-    """
-    데이터셋의 모든 이미지를 [(split, 파일명, 전체경로), ...] 로 모은다.
-    """
     images = []
 
     for split in SPLITS:
@@ -60,8 +52,8 @@ def list_images(dataset_dir):
     return images
 
 
+# 이미지 흑백 변환 및 리사이즈(축소)
 def load_small_gray(image_path, size=VERIFY_SIZE):
-    """이미지를 흑백 64x64 로 줄여서 읽는다. 읽지 못하면 None."""
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
     if image is None:
@@ -70,11 +62,8 @@ def load_small_gray(image_path, size=VERIFY_SIZE):
     return cv2.resize(image, (size, size), interpolation=cv2.INTER_AREA)
 
 
+# 최종 축소(8x8), 각 칸 평균보다 밝으면 1, 어두우면 0 이진수화
 def average_hash(small, hash_size=HASH_SIZE):
-    """
-    줄여둔 이미지를 다시 8x8 로 줄이고, 각 칸이 평균보다 밝으면 1 어두우면 0 으로 적어
-    64자리 이진수(정수)를 만든다. 같은 사진이면 크기가 달라도 같은 값이 나온다.
-    """
     if small is None:
         return None
 
@@ -89,17 +78,18 @@ def average_hash(small, hash_size=HASH_SIZE):
     return value
 
 
+# 이미지 두개의 밝기 차이 평균 구하기(계산값이 0에 가까울수록 같은 사진일 확률이 높다.)
 def mean_abs_diff(small_a, small_b):
-    """두 축소 이미지의 밝기 차이 평균(MAD). 0에 가까울수록 같은 사진이다."""
     return float(np.abs(small_a.astype(float) - small_b.astype(float)).mean())
 
 
+# 검증
 def verify_group(members, smalls, mad_max=MAD_MAX):
     """
     해시가 같아서 묶인 그룹에서, 첫 번째 이미지와 실제로 비슷한 것만 남긴다.
     8x8 해시는 거칠어서 구도만 비슷한 다른 사진도 같이 묶이기 때문이다.
 
-    돌려주는 값 : 확인을 통과한 멤버 목록
+    반환값 : 확인을 통과한 멤버 목록
     """
     base = smalls[members[0][2]]
 
@@ -119,14 +109,14 @@ def verify_group(members, smalls, mad_max=MAD_MAX):
 
     return kept
 
-
+# 그룹화
 def group_by_key(images, keys, smalls=None):
     """
     같은 key 를 가진 이미지끼리 묶는다.
     smalls 를 주면 묶인 것들이 정말 같은 사진인지 한 번 더 확인한다.
     split 이 2개 이상 섞인 묶음만 '중복 그룹'으로 돌려준다.
 
-    돌려주는 값 : [[(split, 파일명, 순번), ...], ...]
+    반환값 : [[(split, 파일명, 순번), ...], ...]
     """
     buckets = {}
 
@@ -154,23 +144,21 @@ def group_by_key(images, keys, smalls=None):
 
     return groups
 
-
+# 정리 파일 결정
 def decide_keep(members):
     """
     중복 그룹에서 어느 파일을 남기고 어느 것을 버릴지 정한다.
     KEEP_PRIORITY 가 앞선 split 을 남기고, 나머지 split 의 파일은 버린다.
 
-    돌려주는 값 : [(split, 파일명, 남길지 여부), ...]
+    반환 값 : [(split, 파일명, 남길지 여부), ...]
     """
     # 그룹에 들어있는 split 중 우선순위가 가장 높은 것
-    keep_split = min({split for split, _, _ in members},
-                     key=lambda s: KEEP_PRIORITY.index(s) if s in KEEP_PRIORITY else 99)
+    keep_split = min({split for split, _, _ in members}, key=lambda s: KEEP_PRIORITY.index(s) if s in KEEP_PRIORITY else 99)
 
     return [(split, file_name, split == keep_split) for split, file_name, _ in members]
 
-
+# split 별 이미지 카운트
 def count_by_split(images):
-    """split 별 이미지 개수를 센다."""
     counts = {split: 0 for split in SPLITS}
 
     for split, _, _ in images:
@@ -178,15 +166,12 @@ def count_by_split(images):
 
     return counts
 
-
+# 기준별로 중복 결과 정리
 def check_one_method(images, keys, method_name, smalls=None):
     """
-    한 가지 기준으로 중복을 찾고 결과를 정리한다.
-
-    돌려주는 값 :
-      {'method': 이름, 'groups': 그룹 수, 'duplicate': 중복 파일 수,
-       'drop': 버릴 파일 수, 'before': {split: 수}, 'after': {split: 수},
-       'rows': csv 로 저장할 목록}
+    반환 값 : {'method': 이름, 'groups': 그룹 수, 'duplicate': 중복 파일 수,
+                'drop': 버릴 파일 수, 'before': {split: 수}, 'after': {split: 수},
+                'rows': csv 로 저장할 목록}
     """
     groups = group_by_key(images, keys, smalls=smalls)
 
@@ -225,8 +210,8 @@ def check_one_method(images, keys, method_name, smalls=None):
     }
 
 
+# 검사 결과 출력
 def print_result(result):
-    """검사 결과 하나를 보기 좋게 출력한다."""
     before, after = result['before'], result['after']
     total_before = sum(before.values())
     total_after = sum(after.values())
@@ -242,6 +227,7 @@ def print_result(result):
     print(f'  {"합계":<7} {total_before:>8} {total_after:>14}')
 
 
+# 중복 샘플 파일명 출력
 def print_sample_files(result, limit=10):
     """중복으로 잡힌 파일 이름을 몇 개만 보여준다."""
     drops = [row for row in result['rows'] if row['처리'] == '삭제대상']
@@ -255,8 +241,8 @@ def print_sample_files(result, limit=10):
         print(f"    [{row['split']}] {row['파일명']}")
 
 
+# 중목 목록 저장
 def save_duplicate_csv(results, save_path):
-    """두 기준의 중복 목록을 하나의 csv 로 저장한다."""
     rows = []
     for result in results:
         rows += result['rows']
@@ -276,10 +262,10 @@ def save_duplicate_csv(results, save_path):
     return save_path
 
 
+# 데이터셋 split 간 중복을 두가지 기준으로 검사, 결과 비교
 def check_duplicate(dataset_dir, save_path=None):
     """
-    데이터셋의 split 간 중복을 두 가지 기준으로 검사하고 결과를 비교한다.
-    돌려주는 값 : [파일명 기준 결과, 이미지 유사도 기준 결과]
+    반환값 : [파일명 기준 결과, 이미지 유사도 기준 결과]
     """
     print(f'===== 중복 검사 : {dataset_dir} =====')
 
@@ -340,5 +326,4 @@ def check_duplicate(dataset_dir, save_path=None):
 
 if __name__ == '__main__':
     # 원본(중복 제거 전) 데이터셋을 검사해 본다
-    check_duplicate('./Data/vest-helmet.v1i_roboflow_origin',
-                    save_path='./result/duplicate_origin.csv')
+    check_duplicate('./Data/vest-helmet.v1i_roboflow_origin', save_path='./result/duplicate_origin.csv')

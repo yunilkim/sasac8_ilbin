@@ -1,20 +1,19 @@
 """
-역할: [5단계] 이 프로젝트의 목표 - 세 모델을 같은 기준으로 비교
+[5단계] 이 프로젝트의 목표 - 세 모델을 같은 기준으로 비교
 
-  1) yolov8n      : detection 라벨(박스)로 학습
-  2) yolov8n-seg  : segmentation 라벨(폴리곤)로 학습
-  3) Mask R-CNN   : 같은 segmentation 라벨을 쓰는 torch 계열 모델
+    1) yolov8n      : detection 라벨(박스)로 학습
+    2) yolov8n-seg  : segmentation 라벨(폴리곤)로 학습
+    3) Mask R-CNN   : 같은 segmentation 라벨을 쓰는 torch 계열 모델
 
-  비교 항목
+비교 항목
     - 박스 지표 : mAP50, mAP50-95, Precision, Recall, F1
     - 평균 IoU  : 정답 박스와 예측 박스가 얼마나 겹치는지
     - 마스크 지표 : mask mAP (yolov8n-seg 만 나옴, 참고용)
     - 추론 속도 : 이미지 한 장당 ms, FPS
     - 학습 시간, 모델 파일 크기
 
-비교는 세 모델이 모두 학습된 뒤에만 실행된다.
-하나라도 가중치가 없으면 무엇이 빠졌는지 알려주고 표를 만들지 않는다.
-결과는 result/compare.csv(표)와 result/compare.jpg(그래프)로 저장된다.
+비교는 세 모델이 모두 학습된 뒤에만 실행
+결과는 result/compare.csv(표)와 result/compare.jpg(그래프)로 저장
 
 실행 : python step5_compare.py
 """
@@ -26,14 +25,15 @@ from tqdm import tqdm
 from ultralytics import YOLO
 
 from config.run_config import MODEL_KEYS, MODEL_NAMES, WEIGHTS
-from step2_train import (MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET, UNET_PATH,
-                         read_train_time)
+from step2_train import (MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET, UNET_PATH, read_train_time)
 from step3_eval import (DETECT_WEIGHTS, DETECT_YAML, SEGMENT_WEIGHTS, SEGMENT_YAML,
                         SPLIT, eval_maskrcnn, eval_model, eval_unet)
 from utils.metrics import mean_iou
 from utils.table import print_table, save_table_csv
 from utils.visualize import BOX_PLOT_KEYS, PIXEL_PLOT_KEYS, draw_compare_plot
 
+import cv2
+from PIL import Image
 # 각 모델의 테스트 이미지 폴더
 DETECT_TEST_DIR = './Data/vest-helmet_crop_dedup/test/images'
 
@@ -45,16 +45,16 @@ SAVE_BOX_PLOT = './result/compare_box.jpg'
 SAVE_PIXEL_PLOT = './result/compare_pixel.jpg'
 
 
+# 모델 파일 크기 반환
 def get_model_size(weights):
-    """모델 파일 크기를 MB 단위로 돌려준다."""
     if not os.path.exists(weights):
         return 0.0
 
     return os.path.getsize(weights) / (1024 * 1024)
 
 
+# yolo8n 모델 하나의 비교 항목 dict 반환
 def collect_yolo_scores(key, weights, data_yaml, test_dir):
-    """YOLO 모델 하나의 비교 항목을 모아 딕셔너리로 돌려준다."""
     # 1) mAP, Precision, Recall, 속도
     scores = eval_model(weights, data_yaml)
 
@@ -70,8 +70,8 @@ def collect_yolo_scores(key, weights, data_yaml, test_dir):
     return scores
 
 
+# 사용 안함
 def collect_maskrcnn_scores():
-    """Mask R-CNN 의 비교 항목을 모아 딕셔너리로 돌려준다."""
     # mAP, Precision, Recall, mIoU, 속도가 한 번에 나온다
     scores = eval_maskrcnn()
 
@@ -81,6 +81,7 @@ def collect_maskrcnn_scores():
     return scores
 
 
+# Unet 모델 비교 항목 dict로 반환
 def collect_unet_scores():
     """U-Net 의 비교 항목을 모아 딕셔너리로 돌려준다. (픽셀 기준 지표)"""
     scores = eval_unet()
@@ -91,19 +92,8 @@ def collect_unet_scores():
     return scores
 
 
+# yolo8n 모델 Unet 모델과 비교를 위해 픽셀화
 def yolo_pixel_scores(weights, dataset_dir, num_classes, split='test', conf=0.45):
-    """
-    yolov8n-seg 의 예측을 '픽셀 지도' 로 눌러서 U-Net 과 같은 기준으로 지표를 낸다.
-
-    yolov8n-seg 는 객체마다 마스크를 주고 U-Net 은 지도 한 장을 준다.
-    그대로는 비교할 수 없으므로, 객체 마스크들을 한 장으로 합쳐서 맞춰 준다.
-    (면적이 큰 것부터 그려 작은 객체가 살아남게 한다 - 정답을 만들 때와 같은 규칙)
-
-    U-Net 의 evaluate_model 과 같은 항목(pixel_mIoU, pixel_Dice, pixel_accuracy)을 낸다.
-    """
-    import cv2
-    from PIL import Image
-
     model = YOLO(weights)
 
     image_dir = os.path.join(dataset_dir, split, 'images')
@@ -143,8 +133,7 @@ def yolo_pixel_scores(weights, dataset_dir, num_classes, split='test', conf=0.45
             areas = masks.reshape(len(masks), -1).sum(axis=1)
 
             for i in np.argsort(-areas):
-                m = cv2.resize(masks[i], (truth.shape[1], truth.shape[0]),
-                               interpolation=cv2.INTER_NEAREST) > 0.5
+                m = cv2.resize(masks[i], (truth.shape[1], truth.shape[0]), interpolation=cv2.INTER_NEAREST) > 0.5
                 predict[m] = classes[i] + 1
 
         correct += float((predict == truth).sum())
@@ -175,16 +164,13 @@ def yolo_pixel_scores(weights, dataset_dir, num_classes, split='test', conf=0.45
     return scores
 
 
+# 학습 안된(가중치 없는) 모델 반환
 def find_missing_models():
-    """
-    세 모델 중 아직 학습되지 않은(가중치 파일이 없는) 모델 목록을 돌려준다.
-    비어 있으면 전부 준비된 것이다.
-    """
     return [key for key in MODEL_KEYS if not os.path.exists(WEIGHTS[key])]
 
 
+# 모델 하나의 비교 항목 반환
 def collect_scores(key):
-    """모델 하나(key)의 비교 항목을 모아 돌려준다."""
     if key == 'detect':
         return collect_yolo_scores(key, DETECT_WEIGHTS, DETECT_YAML, DETECT_TEST_DIR)
 
@@ -202,11 +188,8 @@ def collect_scores(key):
     return collect_maskrcnn_scores()
 
 
+# 세 모델을 모두 평가 및 시각화
 def compare_models():
-    """
-    세 모델을 모두 평가해서 비교표와 그래프를 만든다.
-    하나라도 학습이 안 되어 있으면 비교하지 않고 무엇이 빠졌는지 알려준다.
-    """
     missing = find_missing_models()
 
     if missing:
@@ -238,25 +221,18 @@ def compare_models():
     return scores
 
 
+# 박스로 비교 지표와 픽셀로 비교 지표 시각화
 def draw_split_plots(scores):
-    """
-    지표 성격이 달라 그래프를 두 장으로 나눠 그린다.
-      compare_box.jpg   : 박스로 찾는 모델끼리
-      compare_pixel.jpg : 픽셀로 칠하는 모델끼리
-    한 장에 다 넣으면 서로 없는 칸이 많아 비교가 되지 않는다.
-    """
     box_models = {name: s for name, s in scores.items() if 'mAP50' in s}
     pixel_models = {name: s for name, s in scores.items() if 'pixel_mIoU' in s}
 
     if len(box_models) >= 2:
-        draw_compare_plot(box_models, SAVE_BOX_PLOT,
-                          plot_keys=BOX_PLOT_KEYS, title='box metrics')
+        draw_compare_plot(box_models, SAVE_BOX_PLOT, plot_keys=BOX_PLOT_KEYS, title='box metrics')
     else:
         print(f'  박스 지표를 가진 모델이 {len(box_models)}개라 그래프를 그리지 않는다')
 
     if len(pixel_models) >= 2:
-        draw_compare_plot(pixel_models, SAVE_PIXEL_PLOT,
-                          plot_keys=PIXEL_PLOT_KEYS, title='pixel metrics')
+        draw_compare_plot(pixel_models, SAVE_PIXEL_PLOT, plot_keys=PIXEL_PLOT_KEYS, title='pixel metrics')
     else:
         print(f'  픽셀 지표를 가진 모델이 {len(pixel_models)}개라 그래프를 그리지 않는다')
 

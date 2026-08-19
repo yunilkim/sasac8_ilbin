@@ -47,8 +47,8 @@ SAMPLE_SPLIT = 'train'  # 어느 폴더에서 뽑을지
 SHOW_SAMPLE = False     # True 로 바꾸면 저장과 함께 창으로도 띄운다 (창을 닫아야 다음이 진행됨)
 
 
+# 데이터셋 data.yaml 의 클래스 이름을 출력
 def print_class_names(dataset_dir):
-    """데이터셋 data.yaml 의 클래스 이름을 출력한다. (config/*.yaml 과 맞추기 위함)"""
     yaml_path = os.path.join(dataset_dir, 'data.yaml')
 
     if not os.path.exists(yaml_path):
@@ -63,11 +63,8 @@ def print_class_names(dataset_dir):
     return data['names']
 
 
+# fail list 저장
 def save_problem_csv(problems, save_name):
-    """
-    문제 목록을 csv 로 저장한다. 문제가 없으면 파일을 만들지 않는다.
-    엑셀에서 한글이 깨지지 않도록 utf-8-sig 로 저장한다.
-    """
     if not problems:
         return None
 
@@ -84,8 +81,8 @@ def save_problem_csv(problems, save_name):
     return save_path
 
 
+# fail list 유형별로 출력
 def count_problem_type(problems):
-    """문제 유형별로 몇 건인지 세어 출력한다."""
     counts = {}
 
     for problem in problems:
@@ -98,11 +95,8 @@ def count_problem_type(problems):
     return counts
 
 
+# 무작위 샘플 이미지 작성 함수
 def check_label_samples(dataset_dir, task, sample_name, class_names, show=SHOW_SAMPLE):
-    """
-    무작위로 뽑은 이미지에 라벨을 그려 저장한다.
-    라벨 좌표가 엉뚱한 곳에 찍혀 있으면 이 그림에서 바로 보인다.
-    """
     print('[샘플 라벨 확인]')
 
     save_path = os.path.join(SAVE_DIR, sample_name)
@@ -121,10 +115,9 @@ def check_label_samples(dataset_dir, task, sample_name, class_names, show=SHOW_S
     return picked
 
 
+# 데이터셋 하나 검사
 def run_check(dataset_dir, task, save_name, sample_name, show=SHOW_SAMPLE):
     """
-    데이터셋 하나를 검사한다.
-
     dataset_dir : 데이터셋 폴더
     task        : 'detect' 또는 'segment' (라벨이 어떤 형식이어야 하는지)
     save_name   : 문제 목록 csv 파일 이름
@@ -158,39 +151,29 @@ def run_check(dataset_dir, task, save_name, sample_name, show=SHOW_SAMPLE):
 
     return problems
 
-
+# detection 데이터셋 검사 (라벨을 박스로 그려 확인)
 def check_detect_dataset(show=SHOW_SAMPLE):
-    """detection 데이터셋 검사 (라벨을 박스로 그려 확인)"""
     return run_check(DETECT_DATASET, 'detect',
-                     save_name='check_detect.csv',
-                     sample_name='label_sample_detect.jpg',
-                     show=show)
+                        save_name='check_detect.csv',
+                        sample_name='label_sample_detect.jpg',
+                        show=show)
 
-
+# segmentation 데이터셋 검사 (라벨을 폴리곤 선으로 그려 확인)
 def check_segment_dataset(show=SHOW_SAMPLE):
-    """segmentation 데이터셋 검사 (라벨을 폴리곤 선으로 그려 확인)"""
     return run_check(SEGMENT_DATASET, 'segment',
-                     save_name='check_segment.csv',
-                     sample_name='label_sample_segment.jpg',
-                     show=show)
+                        save_name='check_segment.csv',
+                        sample_name='label_sample_segment.jpg',
+                        show=show)
 
 
+# 원본 데이터셋의 중복 확인 및 목록 저장
 def check_origin_duplicate():
-    """
-    원본(중복 제거 전) 데이터셋에 split 간 중복이 얼마나 있었는지 확인한다.
-
-    지금 쓰는 데이터셋은 이미 중복을 제거한 것이라 결과가 0 으로 나온다.
-    원본과 비교해 보면 '무엇이 제거됐는지'와 '파일명만 봐서는 왜 못 잡는지'를 알 수 있다.
-    이미지를 전부 읽어야 해서 몇 분 걸린다.
-    """
-    return check_duplicate(ORIGIN_DATASET,
-                           save_path=os.path.join(SAVE_DIR, 'duplicate_origin.csv'))
+    return check_duplicate(ORIGIN_DATASET, save_path=os.path.join(SAVE_DIR, 'duplicate_origin.csv'))
 
 
+# 사용하는 데이터셋의 split 간 중복 확인 및 목록 저장
 def check_current_duplicate():
-    """지금 쓰는 데이터셋에 split 간 중복이 남아있지 않은지 확인한다."""
-    return check_duplicate(DETECT_DATASET,
-                           save_path=os.path.join(SAVE_DIR, 'duplicate_current.csv'))
+    return check_duplicate(DETECT_DATASET, save_path=os.path.join(SAVE_DIR, 'duplicate_current.csv'))
 
 
 if __name__ == '__main__':

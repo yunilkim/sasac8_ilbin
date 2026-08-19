@@ -1,20 +1,20 @@
 """
-역할: [2단계] 모델 학습
+[2단계] 모델 학습
 
-이 프로젝트는 세 가지 모델을 만들어 비교한다.
-  - train_detect()   : detection 라벨    + yolov8n.pt      -> runs/detect/vest_helmet_detect...
-  - train_segment()  : segmentation 라벨 + yolov8n-seg.pt  -> runs/segment/vest_helmet_seg...
-  - train_maskrcnn() : segmentation 라벨 + Mask R-CNN(torchvision)
+이 프로젝트는 세 가지 모델을 만들어 비교
+    - train_detect()   : detection 라벨    + yolov8n.pt      -> runs/detect/vest_helmet_detect...
+    - train_segment()  : segmentation 라벨 + yolov8n-seg.pt  -> runs/segment/vest_helmet_seg...
+    - train_maskrcnn() : segmentation 라벨 + Mask R-CNN(torchvision)
 
-  개별 실행 : 위 함수를 직접 부른다
-  일괄 실행 : train_all() 을 부르면 config/run_config.py 의 RUN_MODELS 에 있는 것만 학습한다
+개별 실행 : 위 함수를 직접 부름
+일괄 실행 : train_all() 을 부르면 config/run_config.py 의 RUN_MODELS 에 있는 것만 학습함
 
 --- 학습 결과가 저장되는 방식 ---
 1) YOLO 는 실행할 때마다 runs/ 아래에 새 폴더를 만든다 (vest_helmet_detect, ...detect2, ...)
-   각 폴더에 args.yaml(그때 쓴 설정)과 results.csv(epoch 별 지표)가 남으므로 실험 이력이 된다.
-2) 학습이 끝나면 그 폴더의 best.pt 를 result/weights/ 로 복사한다.
-   평가·추론·비교는 항상 이 고정 경로를 보므로 폴더가 늘어나도 설정을 고칠 필요가 없다.
-3) 실행 조건과 결과를 result/train_log.csv 한 줄로 남긴다. (실험 노트)
+    각 폴더에 args.yaml(그때 쓴 설정)과 results.csv(epoch 별 지표)가 남으므로 실험 이력 저장
+2) 학습이 끝나면 그 폴더의 best.pt 를 result/weights/ 로 복사
+    평가·추론·비교는 항상 이 고정 경로를 보므로 폴더가 늘어나도 설정을 고칠 필요가 없음
+3) 실행 조건과 결과를 result/train_log.csv 한 줄로 저장. (실험 노트)
 
 실행 : python step2_train.py
 """
@@ -48,16 +48,13 @@ IMGSZ = 640              # 입력 이미지 크기
 BATCH = 16               # 한 번에 학습할 이미지 수 (GPU 메모리 부족하면 8로 줄이기)
 DEVICE = 0               # 0 -> GPU, 'cpu' -> CPU
 
-# Early Stopping : 성능이 PATIENCE 번 연속 나아지지 않으면 남은 epoch 을 건너뛰고 멈춘다.
-# best.pt 는 항상 가장 좋았던 epoch 의 가중치이므로 중간에 멈춰도 손해가 없다.
 PATIENCE = 15
 
 DETECT_NAME = 'vest_helmet_detect'
 SEGMENT_NAME = 'vest_helmet_seg'
 
 # ---- Mask R-CNN 학습 설정 ----
-# ResNet50 기반이라 yolov8n 보다 훨씬 무겁다. (실측 1 epoch 약 21분)
-# 사전학습(COCO) 모델을 우리 클래스에 맞추는 것이라 30 epoch 이면 수렴한다.
+# 사용안함
 # MASKRCNN_EPOCHS = 30
 MASKRCNN_EPOCHS = 1 # test epochs
 
@@ -67,9 +64,6 @@ MASKRCNN_BATCH = 4
 MASKRCNN_LR = 0.005
 MASKRCNN_NAME = 'vest_helmet_maskrcnn'
 
-# Early Stopping 인내 epoch.
-# 학습률이 코사인 곡선으로 매끄럽게 줄어들어 '계단 때문에 생기는 정체'가 없으므로,
-# 이 값은 순수하게 '지표가 흔들리는 것을 얼마나 견딜까' 만 뜻한다.
 MASKRCNN_PATIENCE = 7
 
 # 가중치 저장 위치는 config/run_config.py 한 곳에서 관리한다
@@ -77,12 +71,10 @@ MASKRCNN_PATH = WEIGHTS['maskrcnn']
 
 # ---- U-Net 학습 설정 ----
 # ResNet34 인코더(ImageNet 사전학습)를 쓰는 시맨틱 분할 모델.
-# 검출용 부속(RPN, ROI Head)이 없어 Mask R-CNN 보다 가볍다.
 UNET_EPOCHS = 100
 # UNET_EPOCHS = 1     # test epochs
 
-# 4GB GPU 에서 2.65GB 를 쓴다. (batch 4 는 3.45GB 로 아슬아슬하고 속도는 같다)
-UNET_BATCH = 6
+UNET_BATCH = 6            # GPU Ram 8gb 기준
 UNET_LR = 0.0015          # Adam 을 쓰므로 SGD 보다 작은 값을 쓴다
 UNET_PATIENCE = 15
 UNET_NAME = 'vest_helmet_unet'
@@ -90,16 +82,11 @@ UNET_PATH = WEIGHTS['unet']
 
 # ---- 실험 이력 ----
 TRAIN_LOG = './result/train_log.csv'
-LOG_COLUMNS = ['날짜', '모델', '실행폴더', 'epochs', 'patience', 'imgsz', 'batch',
-               '학습시간(분)', 'mAP50']
+LOG_COLUMNS = ['날짜', '모델', '실행폴더', 'epochs', 'patience', 'imgsz', 'batch', '학습시간(분)', 'mAP50']
 
 
+# results.csv 에서 best 지표 가져오기
 def read_best_map(save_dir):
-    """
-    학습 폴더의 results.csv 에서 가장 좋았던 mAP50 을 읽는다.
-    (best.pt 가 최고 성능 epoch 의 가중치이므로 최댓값을 쓴다)
-    파일이 없으면 빈 문자열을 돌려준다. (Mask R-CNN 은 results.csv 가 없다)
-    """
     csv_path = os.path.join(save_dir, 'results.csv')
 
     if not os.path.exists(csv_path):
@@ -118,9 +105,8 @@ def read_best_map(save_dir):
 
     return round(best, 4)
 
-
+# 실행 조건과 결과 이력 저장(result/train_log.csv)
 def save_train_log(key, save_dir, epochs, patience, minutes, best_map=''):
-    """실행 조건과 결과를 result/train_log.csv 에 한 줄 추가한다."""
     os.makedirs(os.path.dirname(TRAIN_LOG), exist_ok=True)
 
     # 파일이 처음 만들어질 때만 열 이름을 쓴다
@@ -147,11 +133,8 @@ def save_train_log(key, save_dir, epochs, patience, minutes, best_map=''):
     print(f'학습 시간 : {minutes:.1f}분   (이력 기록 : {TRAIN_LOG})')
 
 
+# 이력 마지막 값 총 학습 시간 읽기
 def read_train_time(key):
-    """
-    기록해둔 학습 시간(분)을 읽는다. 같은 모델을 여러 번 학습했으면 마지막 값을 쓴다.
-    기록이 없으면 0 을 돌려준다.
-    """
     if not os.path.exists(TRAIN_LOG):
         return 0.0
 
@@ -165,11 +148,8 @@ def read_train_time(key):
     return minutes
 
 
+# 최종 best.pt를 결과 폴더로 복사
 def copy_best_weights(save_dir, key):
-    """
-    학습 폴더의 best.pt 를 '지금 쓰는 모델' 위치로 복사한다.
-    학습 폴더는 이력으로 그대로 남고, 평가·추론은 복사본을 쓴다.
-    """
     src = os.path.join(save_dir, 'weights', 'best.pt')
     dst = WEIGHTS[key]
 
@@ -184,11 +164,8 @@ def copy_best_weights(save_dir, key):
     return dst
 
 
+# yolo8n 모델 학습 
 def train_yolo(key, base_model, data_yaml, run_name):
-    """
-    YOLO 계열(detect / segment) 학습을 공통으로 처리한다.
-    exist_ok 를 주지 않으므로 같은 이름이 있으면 뒤에 번호가 붙은 새 폴더가 만들어진다.
-    """
     # 실행 전에 어떤 설정으로 도는지 보여준다 (CONFIRM_RUN 이 True 면 폴더명 확인까지)
     settings = {
         '모델': f'{MODEL_NAMES[key]} ({base_model})',
@@ -201,8 +178,7 @@ def train_yolo(key, base_model, data_yaml, run_name):
         '가중치 저장': WEIGHTS[key],
     }
 
-    ok, run_name = confirm_run(f'{MODEL_NAMES[key]} 학습', settings,
-                               run_name=run_name, confirm=CONFIRM_RUN)
+    ok, run_name = confirm_run(f'{MODEL_NAMES[key]} 학습', settings, run_name=run_name, confirm=CONFIRM_RUN)
 
     if not ok:
         print('학습을 취소했습니다.')
@@ -230,25 +206,18 @@ def train_yolo(key, base_model, data_yaml, run_name):
     save_train_log(key, save_dir, EPOCHS, PATIENCE, minutes, read_best_map(save_dir))
 
 
+# detect 모델 학습 진행
 def train_detect():
-    """detection 라벨로 yolov8n 을 학습한다."""
     train_yolo('detect', 'yolov8n.pt', DETECT_YAML, DETECT_NAME)
 
 
+# segment 모델 학습진행
 def train_segment():
-    """segmentation 라벨로 yolov8n-seg 를 학습한다. (라벨 데이터셋이 준비된 뒤 실행)"""
     train_yolo('segment', 'yolov8n-seg.pt', SEGMENT_YAML, SEGMENT_NAME)
 
 
+# 사용안함
 def train_maskrcnn():
-    """
-    segmentation 라벨로 torchvision Mask R-CNN 을 학습한다.
-
-    YOLO 와 마찬가지로 epoch 마다 검증하고, 가장 좋았던 epoch 의 가중치를 저장하며,
-    나아지지 않으면 Early Stopping 으로 멈춘다.
-    epoch 별 기록은 runs/maskrcnn/<이름>/results.csv 에 남는다.
-    (가중치 파일이 170MB 로 커서 이력은 기록만 쌓고 가중치는 한 개만 덮어쓴다)
-    """
     settings = {
         '모델': 'Mask R-CNN (torchvision)',
         '데이터': SEGMENT_DATASET,
@@ -262,8 +231,7 @@ def train_maskrcnn():
         '가중치 저장': MASKRCNN_PATH,
     }
 
-    ok, run_name = confirm_run('Mask R-CNN 학습', settings,
-                               run_name=MASKRCNN_NAME, confirm=CONFIRM_RUN)
+    ok, run_name = confirm_run('Mask R-CNN 학습', settings, run_name=MASKRCNN_NAME, confirm=CONFIRM_RUN)
 
     if not ok:
         print('학습을 취소했습니다.')
@@ -275,13 +243,13 @@ def train_maskrcnn():
     start = time.time()
 
     result = train_model(dataset_dir=SEGMENT_DATASET,
-                         num_classes=NUM_CLASSES,
-                         save_path=MASKRCNN_PATH,
-                         epochs=MASKRCNN_EPOCHS,
-                         batch_size=MASKRCNN_BATCH,
-                         lr=MASKRCNN_LR,
-                         patience=MASKRCNN_PATIENCE,
-                         run_dir=run_dir)
+                            num_classes=NUM_CLASSES,
+                            save_path=MASKRCNN_PATH,
+                            epochs=MASKRCNN_EPOCHS,
+                            batch_size=MASKRCNN_BATCH,
+                            lr=MASKRCNN_LR,
+                            patience=MASKRCNN_PATIENCE,
+                            run_dir=run_dir)
 
     minutes = (time.time() - start) / 60
 
@@ -290,14 +258,8 @@ def train_maskrcnn():
     print(f'Mask R-CNN 학습 완료 -> {MASKRCNN_PATH}')
 
 
+# Unet 학습 진행
 def train_unet():
-    """
-    segmentation 라벨(클래스 지도)로 U-Net 을 학습한다.
-
-    yolov8n-seg 와 달리 픽셀마다 클래스를 맞히는 모델이라 박스가 나오지 않는다.
-    좋고 나쁨은 mIoU 로 판단하고, 가장 좋았던 epoch 의 가중치를 저장한다.
-    epoch 별 기록은 runs/unet/<이름>/results.csv 에 남는다.
-    """
     settings = {
         '모델': 'U-Net (ResNet34 인코더, ImageNet 사전학습)',
         '데이터': f'{SEGMENT_DATASET} (semantic 폴더)',
@@ -313,8 +275,7 @@ def train_unet():
         '가중치 저장': UNET_PATH,
     }
 
-    ok, run_name = confirm_run('U-Net 학습', settings,
-                               run_name=UNET_NAME, confirm=CONFIRM_RUN)
+    ok, run_name = confirm_run('U-Net 학습', settings, run_name=UNET_NAME, confirm=CONFIRM_RUN)
 
     if not ok:
         print('학습을 취소했습니다.')
@@ -339,8 +300,7 @@ def train_unet():
     minutes = (time.time() - start) / 60
 
     # mAP 대신 mIoU 를 기록한다 (박스가 없어 mAP 를 낼 수 없다)
-    save_train_log('unet', run_dir, result['epochs_ran'], UNET_PATIENCE, minutes,
-                   round(result['best_score'], 4))
+    save_train_log('unet', run_dir, result['epochs_ran'], UNET_PATIENCE, minutes, round(result['best_score'], 4))
     print(f'U-Net 학습 완료 -> {UNET_PATH}')
 
 
@@ -352,12 +312,8 @@ TRAIN_FUNCS = {
     'maskrcnn': train_maskrcnn,
 }
 
-
+# config 설정에 따른 모델 학습 진행 
 def train_all(run_models=RUN_MODELS):
-    """
-    RUN_MODELS 에 적힌 모델을 순서대로 학습한다.
-    실행할 모델은 config/run_config.py 에서 정한다.
-    """
     print(f'학습할 모델 : {run_models}')
 
     for key in run_models:

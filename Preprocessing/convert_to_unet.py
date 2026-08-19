@@ -1,19 +1,19 @@
 """
-역할: 인스턴스 마스크(npz)를 U-Net 이 쓰는 클래스 지도(png)로 바꾼다.
+인스턴스 마스크(npz)를 U-Net 이 쓰는 클래스 지도(png)로 변경.
 
-U-Net 은 '픽셀마다 클래스 하나'를 맞히는 모델이라, 객체를 따로 구분하지 않는다.
-그래서 정답도 객체별 마스크가 아니라 한 장의 지도여야 한다.
+U-Net 은 '픽셀마다 클래스 하나'를 맞히는 모델이라, 객체를 따로 구분하지 않음.
+그래서 정답도 객체별 마스크가 아니라 한 장의 지도여야 함.
 
-  <데이터셋>/<split>/masks/<이름>.npz      : 객체별 마스크 (Mask R-CNN 용, 이미 만들어 둔 것)
-        ↓
-  <데이터셋>/<split>/semantic/<이름>.png   : 클래스 지도 (U-Net 용)
-        0 = 배경, 1 = reflective_jacket, 2 = safety_helmet
+이전에 만들어둔 mask rcnn 라벨 형식을 활용
+    <데이터셋>/<split>/masks/<이름>.npz      : 객체별 마스크 (Mask R-CNN 용, 이미 만들어 둔 것)
+            ↓
+    <데이터셋>/<split>/semantic/<이름>.png   : 클래스 지도 (U-Net 용)
+            0 = 배경, 1 = reflective_jacket, 2 = safety_helmet
 
 겹치는 픽셀 처리
-  한 픽셀에 두 객체가 겹치면 클래스를 하나만 남겨야 한다.
-  면적이 작은 객체를 나중에 그려서 살린다. (헬멧이 조끼에 가려지지 않도록)
-  같은 클래스끼리 겹치는 것은 어차피 같은 값이라 문제되지 않는다.
-  실측 결과 다른 클래스끼리 겹치는 픽셀은 전체의 0.36% 였다.
+    한 픽셀에 두 객체가 겹치면 클래스를 하나만 남겨야 한다.
+    면적이 작은 객체를 나중에 그려서 살린다. (헬멧이 조끼에 가려지지 않도록)
+    같은 클래스끼리 겹치는 것은 어차피 같은 값이라 문제되지 않는다.
 
 실행 : python -m Preprocessing.convert_to_unet
 """
@@ -26,19 +26,26 @@ from tqdm import tqdm
 
 from Preprocessing.convert_to_maskrcnn import find_image_path, load_mask_file
 
+import random
+
+import cv2
+import matplotlib.pyplot as plt
+
+from utils.visualize import get_color
+
 SPLITS = ['train', 'valid', 'test']
 
 # 결과가 저장될 폴더 이름
 SEMANTIC_DIR = 'semantic'
 
 
+
+# 객체별 마스크를 클래스 지도 한 장으로 합치는 함수.
 def to_semantic(masks, classes):
     """
-    객체별 마스크를 클래스 지도 한 장으로 합친다.
-
     masks   : (객체수, H, W) 0/1
     classes : (객체수,) 0부터 시작하는 클래스 번호
-    돌려주는 값 : (H, W) uint8, 배경 0 / 클래스는 1부터
+    반환값 : (H, W) uint8, 배경 0 / 클래스는 1부터
     """
     semantic = np.zeros(masks.shape[1:], dtype=np.uint8)
 
@@ -52,14 +59,14 @@ def to_semantic(masks, classes):
     return semantic
 
 
+# split 하나를 클래스 지도로 변환
 def convert_split(dataset_dir, split, overwrite=False):
-    """split 하나를 클래스 지도로 바꾼다."""
     mask_dir = os.path.join(dataset_dir, split, 'masks')
     out_dir = os.path.join(dataset_dir, split, SEMANTIC_DIR)
 
     if not os.path.isdir(mask_dir):
         print(f'  {split:<6} : masks 폴더가 없어 건너뜁니다. '
-              f'(먼저 python -m Preprocessing.convert_to_maskrcnn 실행)')
+                f'(먼저 python -m Preprocessing.convert_to_maskrcnn 실행)')
         return None
 
     mask_files = [f for f in sorted(os.listdir(mask_dir)) if f.endswith('.npz')]
@@ -102,8 +109,8 @@ def convert_split(dataset_dir, split, overwrite=False):
     return {'split': split, 'done': done, 'skipped': skipped, 'class_pixels': class_pixels}
 
 
+# 데이터셋 전체를 클래스 지도로 변환
 def convert_dataset(dataset_dir, overwrite=False):
-    """데이터셋 전체를 클래스 지도로 바꾼다."""
     print(f'===== U-Net 용 클래스 지도 변환 : {dataset_dir} =====')
 
     if not os.path.isdir(dataset_dir):
@@ -121,14 +128,13 @@ def convert_dataset(dataset_dir, overwrite=False):
     return results
 
 
+# split 별 변환 검증
 def verify_split(dataset_dir, split, num_classes=2, sample_count=3):
     """
-    변환이 제대로 됐는지 확인한다.
-
-      1) 클래스 지도의 크기가 원본 이미지와 같은가
-      2) 값이 0 ~ num_classes 범위 안인가
-      3) 원본 마스크에 있던 클래스가 지도에도 남아 있는가
-         (겹쳐서 완전히 가려진 객체는 사라질 수 있으므로 그 개수를 센다)
+    1) 클래스 지도의 크기가 원본 이미지와 같은가
+    2) 값이 0 ~ num_classes 범위 안인가
+    3) 원본 마스크에 있던 클래스가 지도에도 남아 있는가
+        (겹쳐서 완전히 가려진 객체는 사라질 수 있으므로 그 개수를 센다)
     """
     mask_dir = os.path.join(dataset_dir, split, 'masks')
     out_dir = os.path.join(dataset_dir, split, SEMANTIC_DIR)
@@ -194,15 +200,8 @@ def verify_split(dataset_dir, split, num_classes=2, sample_count=3):
     return problems
 
 
+# 랜덤 이미지 클래스 지도를 원본 이미지에 겹쳐서 확인 
 def save_sample(dataset_dir, split, files, sample_count=3):
-    """클래스 지도를 원본 이미지에 겹쳐 그려 저장한다. (눈으로 확인용)"""
-    import random
-
-    import cv2
-    import matplotlib.pyplot as plt
-
-    from utils.visualize import get_color
-
     image_dir = os.path.join(dataset_dir, split, 'images')
     out_dir = os.path.join(dataset_dir, split, SEMANTIC_DIR)
 
@@ -242,9 +241,8 @@ def save_sample(dataset_dir, split, files, sample_count=3):
 
     print(f'           확인용 그림 저장 : {save_path}')
 
-
+# 데이터셋 전체의 반환 결과 확인
 def verify_dataset(dataset_dir, num_classes=2, sample_count=3):
-    """데이터셋 전체의 변환 결과를 확인한다."""
     print(f'===== 변환 결과 확인 : {dataset_dir} =====')
 
     problems = []

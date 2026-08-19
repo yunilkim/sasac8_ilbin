@@ -1,24 +1,25 @@
 """
-역할: U-Net (시맨틱 분할) 모델 만들기 / 학습 / 평가
+U-Net (시맨틱 분할) 모델 만들기 / 학습 / 평가
 
 yolov8n-seg 와 다른 점
-  yolov8n-seg : 객체를 하나씩 찾아 각각 마스크를 준다 (인스턴스 분할)
-  U-Net       : 픽셀마다 클래스 하나를 찍는다 (시맨틱 분할)
-                겹친 조끼 두 벌은 하나의 덩어리가 된다. 박스도 확신도도 없다.
+    yolov8n-seg : 객체를 하나씩 찾아 각각 마스크를 준다 (인스턴스 분할)
+    U-Net       : 픽셀마다 클래스 하나를 찍는다 (시맨틱 분할)
+                    겹친 조끼 두 벌은 하나의 덩어리가 된다. 박스도 확신도도 없다.
 
 구조
-  U 자 모양이라 U-Net 이다. 왼쪽에서 이미지를 줄여가며 '무엇인지'를 파악하고,
-  오른쪽에서 다시 키우며 '어디인지'를 복원한다.
-  줄이는 과정에서 잃어버린 위치 정보를 살리려고, 같은 크기의 왼쪽 결과를
-  오른쪽에 이어 붙인다(skip connection). 이게 U-Net 의 핵심이다.
+    U 자 모양이라 U-Net 이다. 왼쪽에서 이미지를 줄여가며 '무엇인지'를 파악하고,
+    오른쪽에서 다시 키우며 '어디인지'를 복원한다.
+    줄이는 과정에서 잃어버린 위치 정보를 살리려고, 같은 크기의 왼쪽 결과를
+    오른쪽에 이어 붙인다(skip connection). 이게 U-Net 의 핵심이다.
 
-  수축 경로 : ImageNet 으로 사전학습된 ResNet34 를 그대로 쓴다.
-              (yolov8n-seg 가 COCO 사전학습을 쓰므로 공정하게 맞춘 것)
-  확장 경로 : 업샘플 -> skip 연결 -> conv 2번 을 반복한다.
+    수축 경로 : ImageNet 으로 사전학습된 ResNet34 를 그대로 쓴다.
+                (yolov8n-seg 가 COCO 사전학습을 쓰므로 공정하게 맞춘 것)
+    확장 경로 : 업샘플 -> skip 연결 -> conv 2번 을 반복한다.
 """
 
 import csv
 import os
+import time
 
 import numpy as np
 import torch
@@ -29,12 +30,19 @@ from tqdm import tqdm
 
 from models.unet_dataset import get_dataloader, has_split
 
+import cv2
+from PIL import Image as PILImage
+from torchvision import transforms
+
+from models.unet_dataset import IMAGE_EXT, NORM_MEAN, NORM_STD
+from utils.visualize import get_color
+
 # 입력 이미지 크기 (YOLO 와 동일하게 맞춘다)
 INPUT_SIZE = 640
 
 
+# 기본블록(conv -> BN -> ReLU 를 두 번)
 def double_conv(in_ch, out_ch):
-    """conv -> BN -> ReLU 를 두 번 거치는 기본 블록"""
     return nn.Sequential(
         nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1, bias=False),
         nn.BatchNorm2d(out_ch),
@@ -44,13 +52,8 @@ def double_conv(in_ch, out_ch):
         nn.ReLU(inplace=True),
     )
 
-
+# 확장 경로
 class UpBlock(nn.Module):
-    """
-    확장 경로의 한 칸.
-    작은 특징맵을 2배로 키우고, 수축 경로에서 온 같은 크기 특징맵을 옆에 붙인 뒤 conv 한다.
-    """
-
     def __init__(self, in_ch, skip_ch, out_ch):
         super().__init__()
         self.up = nn.ConvTranspose2d(in_ch, in_ch // 2, kernel_size=2, stride=2)
@@ -69,9 +72,8 @@ class UpBlock(nn.Module):
         return self.conv(x)
 
 
+# ResNet34 를 수축 경로로 쓰는 U-Net
 class UNet(nn.Module):
-    """ResNet34 를 수축 경로로 쓰는 U-Net"""
-
     def __init__(self, num_classes, pretrained=True):
         super().__init__()
 
@@ -112,34 +114,24 @@ class UNet(nn.Module):
         return self.head(d)
 
 
+# GPU 사용
 def get_device(device=None):
-    """GPU 가 있으면 cuda, 없으면 cpu 를 쓴다."""
     if device is not None:
         return device
 
     return 'cuda' if torch.cuda.is_available() else 'cpu'
 
-
+# 클래스 가중치 균형
+# 배경의 영역이 크므로 가중치 = 1 / sqrt(빈도) 를 평균 1 이 되도록 맞춘 값 반환
+# (1/빈도 는 너무 극단적이라 제곱근으로 완화한다)
 def compute_class_weights(dataset_dir, num_classes, sample=300):
-    """
-    클래스마다 얼마나 자주 나오는지 세어 가중치를 만든다.
-
-    이 데이터는 배경이 83%, 조끼 13%, 헬멧 3% 라서 그냥 학습하면
-    '전부 배경'이라고 찍어도 정확도가 높게 나온다. 그러면 헬멧을 못 배운다.
-    드문 클래스에 더 큰 가중치를 줘서 균형을 맞춘다.
-
-    가중치 = 1 / sqrt(빈도)  를 평균 1 이 되도록 맞춘 값.
-    (1/빈도 는 너무 극단적이라 제곱근으로 완화한다)
-    """
-    from PIL import Image
-
     semantic_dir = os.path.join(dataset_dir, 'train', 'semantic')
     files = sorted(f for f in os.listdir(semantic_dir) if f.endswith('.png'))[:sample]
 
     counts = np.zeros(num_classes + 1)
 
     for file_name in files:
-        arr = np.array(Image.open(os.path.join(semantic_dir, file_name)))
+        arr = np.array(PILImage.open(os.path.join(semantic_dir, file_name)))
         values, n = np.unique(arr, return_counts=True)
 
         for v, c in zip(values, n):
@@ -156,13 +148,13 @@ def compute_class_weights(dataset_dir, num_classes, sample=300):
     return torch.tensor(weights, dtype=torch.float32)
 
 
+# 모델 로드
 def load_model(num_classes, pretrained=True):
     """U-Net 을 만든다."""
     return UNet(num_classes, pretrained=pretrained)
 
-
+# 저장된 가중치 로드
 def load_trained_model(weights_path, num_classes, device=None):
-    """저장해둔 가중치를 불러온다."""
     device = get_device(device)
 
     model = load_model(num_classes, pretrained=False)
@@ -172,9 +164,8 @@ def load_trained_model(weights_path, num_classes, device=None):
 
     return model
 
-
+# 학습 1 에폭 함수 -> 평균 loss 반환
 def train_one_epoch(model, loader, optimizer, criterion, device):
-    """1 epoch 학습하고 평균 loss 를 돌려준다."""
     model.train()
     total_loss = 0.0
 
@@ -197,12 +188,8 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
 
     return total_loss / len(loader)
 
-
+# 1 검증 함수 -> loss와 클래스별 IoU 반환
 def validate_one_epoch(model, loader, criterion, device, num_classes):
-    """
-    검증 데이터로 loss 와 클래스별 IoU 를 구한다.
-    IoU = 맞게 예측한 픽셀 / (예측한 픽셀 + 정답 픽셀 - 맞게 예측한 픽셀)
-    """
     model.eval()
 
     total_loss = 0.0
@@ -233,9 +220,8 @@ def validate_one_epoch(model, loader, criterion, device, num_classes):
 
     return total_loss / len(loader), miou, iou
 
-
+# 기록(클래스별 IoU 포함)
 def save_epoch_log(log_path, rows, num_classes):
-    """epoch 별 기록을 csv 로 남긴다. (클래스별 IoU 도 함께)"""
     os.makedirs(os.path.dirname(log_path), exist_ok=True)
 
     columns = ['epoch', 'train_loss', 'val_loss', 'val_mIoU']
@@ -248,20 +234,12 @@ def save_epoch_log(log_path, rows, num_classes):
         writer.writerows(rows)
 
 
+# 학습(patience 기준 mIou)
 def train_model(dataset_dir, num_classes, save_path,
                 epochs=30, batch_size=3, lr=0.001, patience=7,
                 input_size=INPUT_SIZE, run_dir=None, device=None,
                 use_class_weights=True, class_names=None):
-    """
-    U-Net 을 학습한다.
 
-    yolov8n-seg 와 마찬가지로
-      - epoch 마다 검증하고 (loss 와 mIoU)
-      - 가장 좋았던 epoch 의 가중치를 저장하며
-      - patience 번 연속 나아지지 않으면 멈춘다
-
-    판단 기준은 mIoU 다. (높을수록 좋다)
-    """
     device = get_device(device)
     print(f'학습 장치 : {device}')
 
@@ -269,14 +247,12 @@ def train_model(dataset_dir, num_classes, save_path,
     if class_names is None:
         class_names = [f'class{c}' for c in range(1, num_classes + 1)]
 
-    train_loader = get_dataloader(dataset_dir, 'train', batch_size=batch_size,
-                                  shuffle=True, augment=True, input_size=input_size)
+    train_loader = get_dataloader(dataset_dir, 'train', batch_size=batch_size, shuffle=True, augment=True, input_size=input_size)
 
     use_valid = has_split(dataset_dir, 'valid')
 
     if use_valid:
-        valid_loader = get_dataloader(dataset_dir, 'valid', batch_size=batch_size,
-                                      shuffle=False, augment=False, input_size=input_size)
+        valid_loader = get_dataloader(dataset_dir, 'valid', batch_size=batch_size, shuffle=False, augment=False, input_size=input_size)
     else:
         valid_loader = None
         print('[안내] valid 지도가 없어 Early Stopping 없이 끝까지 학습합니다.')
@@ -311,8 +287,7 @@ def train_model(dataset_dir, num_classes, save_path,
         scheduler.step()
 
         if use_valid:
-            val_loss, miou, iou = validate_one_epoch(model, valid_loader, criterion,
-                                                     device, num_classes)
+            val_loss, miou, iou = validate_one_epoch(model, valid_loader, criterion, device, num_classes)
             score = miou
         else:
             val_loss, miou, iou = None, None, None
@@ -347,8 +322,7 @@ def train_model(dataset_dir, num_classes, save_path,
         text = f'[EPOCH {e}/{epochs}] train {train_loss:.4f}'
 
         if val_loss is not None:
-            per_class = ' / '.join(f'{class_names[c - 1]} {iou[c]:.3f}'
-                                   for c in range(1, num_classes + 1))
+            per_class = ' / '.join(f'{class_names[c - 1]} {iou[c]:.3f}' for c in range(1, num_classes + 1))
             text += f'  val {val_loss:.4f}  mIoU {miou:.4f} ({per_class})'
 
         text += f'  lr {now_lr:.6f}'
@@ -360,7 +334,7 @@ def train_model(dataset_dir, num_classes, save_path,
 
         if use_valid and bad_count >= patience:
             print(f'{patience} epoch 연속 나아지지 않아 학습을 멈춥니다. '
-                  f'(가장 좋았던 epoch {best_epoch})')
+                    f'(가장 좋았던 epoch {best_epoch})')
             break
 
     log_path = os.path.join(run_dir, 'results.csv') if run_dir else None
@@ -379,18 +353,8 @@ def train_model(dataset_dir, num_classes, save_path,
     }
 
 
-def evaluate_model(model, dataset_dir, num_classes, split='test',
-                   input_size=INPUT_SIZE, batch_size=8, device=None):
-    """
-    테스트 데이터로 픽셀 기준 지표를 구한다.
-
-      IoU        : 클래스마다 겹친 정도. mIoU 는 배경을 뺀 평균
-      Dice       : 2 x 겹침 / (예측 + 정답). IoU 와 비슷하지만 겹침을 더 후하게 본다
-      pixel_accuracy : 전체 픽셀 중 맞힌 비율 (그래프 라벨이 깨지지 않게 영문 키를 쓴다)
-      추론시간   : 이미지 한 장 처리 시간
-    """
-    import time
-
+# 평가지표(IoU, Dice, pixel_accuracy, 추론시간)
+def evaluate_model(model, dataset_dir, num_classes, split='test', input_size=INPUT_SIZE, batch_size=8, device=None):
     device = get_device(device)
     model.to(device)
     model.eval()
@@ -449,20 +413,8 @@ def evaluate_model(model, dataset_dir, num_classes, split='test',
 
     return scores
 
-
-def predict_images(model, image_dir, save_dir, class_names,
-                   input_size=INPUT_SIZE, device=None):
-    """
-    테스트 이미지를 추론해서 클래스별로 색을 칠한 결과 이미지를 저장한다.
-    U-Net 은 박스가 없으므로 마스크만 그린다.
-    """
-    import cv2
-    from PIL import Image as PILImage
-    from torchvision import transforms
-
-    from models.unet_dataset import IMAGE_EXT, NORM_MEAN, NORM_STD
-    from utils.visualize import get_color
-
+# 예측 및 이미지 저장(U-net은 박스제외 마스크만 처리)
+def predict_images(model, image_dir, save_dir, class_names, input_size=INPUT_SIZE, device=None):
     device = get_device(device)
     model.to(device)
     model.eval()

@@ -1,5 +1,5 @@
 """
-역할: 전체 실행 순서를 모아둔 파일
+전체 실행 순서를 모아둔 파일
 
 필요한 단계의 주석을 풀고 python main.py 로 실행한다.
 (각 단계 파일을 따로 실행해도 된다 : python step2_train.py, python step3_eval.py ...)

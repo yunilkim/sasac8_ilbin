@@ -1,16 +1,16 @@
 """
-역할: [3단계] 학습한 모델의 성능 지표를 뽑는다.
+[3단계] 학습한 모델의 성능 지표
 
-test 셋으로 mAP50, mAP50-95, Precision, Recall, 추론 속도를 구한다.
-  - YOLO 모델      : ultralytics 가 지표를 계산해준다 (eval_model)
-  - Mask R-CNN     : ultralytics 를 못 쓰므로 torchmetrics 와 직접 만든 IoU 로 계산 (eval_maskrcnn)
-(PR Curve, Confusion Matrix 그림은 ultralytics 가 runs/.../val 폴더에 자동 저장한다)
+test 셋으로 mAP50, mAP50-95, Precision, Recall, 추론 속도를 구함
+    - YOLO 모델      : ultralytics 가 지표를 계산 (eval_model)
+    - Mask R-CNN     : ultralytics 를 못 쓰므로 torchmetrics 와 직접 만든 IoU 로 계산 (eval_maskrcnn)
+(PR Curve, Confusion Matrix 그림은 ultralytics 가 runs/.../val 폴더에 자동 저장)
 
-  개별 실행 : eval_one('detect') 처럼 모델 하나만 평가
-  일괄 실행 : eval_all() 을 부르면 config/run_config.py 의 RUN_MODELS 에 있는 것만 평가
+개별 실행 : eval_one('detect') 처럼 모델 하나만 평가
+일괄 실행 : eval_all() 을 부르면 config/run_config.py 의 RUN_MODELS 에 있는 것만 평가
 
-평가에는 시간이 걸리므로 결과를 result/eval_scores.csv 에 저장해 둔다.
-(나중에 수치를 다시 볼 때 평가를 또 돌리지 않아도 된다)
+평가에는 시간이 걸리므로 결과를 result/eval_scores.csv 에 저장
+(나중에 수치를 다시 볼 때 평가를 또 돌리지 않음)
 
 실행 : python step3_eval.py
 """
@@ -23,8 +23,7 @@ from config.run_config import MODEL_NAMES, RUN_MODELS, WEIGHTS
 from models.mask_rcnn import evaluate_model, load_trained_model
 from models.unet import evaluate_model as unet_evaluate
 from models.unet import load_trained_model as unet_load
-from step2_train import (MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET, UNET_INPUT_SIZE,
-                         UNET_PATH)
+from step2_train import (MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET, UNET_INPUT_SIZE, UNET_PATH)
 from utils.run_info import print_settings
 from utils.table import save_table_csv
 
@@ -41,12 +40,8 @@ SPLIT = 'test'      # train / val / test
 # 평가 결과를 저장할 파일
 SAVE_CSV = './result/eval_scores.csv'
 
-
+# yolo8n 모델 평가(detect, segment)
 def eval_model(weights, data_yaml, split=SPLIT):
-    """
-    YOLO 모델 하나를 평가하고 지표를 딕셔너리로 돌려준다.
-    detection 모델과 segmentation 모델 둘 다 이 함수를 쓴다.
-    """
     model = YOLO(weights)
     metrics = model.val(data=data_yaml, split=split, imgsz=IMGSZ)
 
@@ -78,29 +73,23 @@ def eval_model(weights, data_yaml, split=SPLIT):
 
     return scores
 
-
+# 사용 안함
 def eval_maskrcnn(weights=MASKRCNN_PATH, dataset_dir=SEGMENT_DATASET, split=SPLIT):
-    """Mask R-CNN 을 평가하고 YOLO 와 같은 항목의 지표를 돌려준다."""
     model = load_trained_model(weights, NUM_CLASSES)
     scores = evaluate_model(model, dataset_dir, split=split)
 
     return scores
 
 
+# Unet 모델 평가(픽셀 기준 지표(mIoU, Dice, 정확도) 사용)
 def eval_unet(weights=UNET_PATH, dataset_dir=SEGMENT_DATASET, split=SPLIT):
-    """
-    U-Net 을 평가한다.
-
-    박스가 없어 mAP 를 낼 수 없으므로 픽셀 기준 지표(mIoU, Dice, 정확도)를 쓴다.
-    yolov8n-seg 와는 이 픽셀 지표로 비교한다. (step5_compare 참고)
-    """
     model = unet_load(weights, NUM_CLASSES)
-    scores = unet_evaluate(model, dataset_dir, NUM_CLASSES,
-                           split=split, input_size=UNET_INPUT_SIZE)
+    scores = unet_evaluate(model, dataset_dir, NUM_CLASSES, split=split, input_size=UNET_INPUT_SIZE)
 
     return scores
 
 
+# 지표 출력
 def print_scores(title, scores):
     """지표 딕셔너리를 보기 좋게 출력한다."""
     print(f'--- {title} ---')
@@ -109,8 +98,8 @@ def print_scores(title, scores):
         print(f'{key:15s} : {value:.4f}')
 
 
+# 모델 하나의 지표 반환
 def eval_one(key):
-    """모델 하나(key)를 평가해서 지표 딕셔너리를 돌려준다."""
     # 어떤 가중치를 어떤 데이터로 평가하는지 먼저 보여준다
     print_settings(f'{MODEL_NAMES[key]} 평가', {
         '가중치': WEIGHTS[key],
@@ -133,12 +122,10 @@ def eval_one(key):
     return eval_maskrcnn()
 
 
+# RUN_MODELS 설정에 맞는 모델 검증 전체 실행
 def eval_all(run_models=RUN_MODELS, save_csv=SAVE_CSV):
     """
-    RUN_MODELS 에 적힌 모델을 순서대로 평가한다.
-    학습이 안 끝나 가중치가 없는 모델은 건너뛴다.
-    평가한 결과가 하나라도 있으면 csv 로 저장한다.
-    돌려주는 값 : {모델키: 지표 딕셔너리}
+    반환값 : {모델키: 지표 딕셔너리}
     """
     print(f'평가할 모델 : {run_models}')
 

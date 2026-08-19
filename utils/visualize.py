@@ -1,10 +1,8 @@
 """
-역할: 그림으로 확인하는 기능 모음
-
-  1) show_label()         : 이미지 한 장에 정답 라벨을 그려서 눈으로 확인
-  2) draw_label_samples() : 데이터셋에서 무작위로 몇 장을 뽑아 라벨을 그려 한 장으로 저장
-                            (detection 은 박스, segmentation 은 폴리곤 선)
-  3) draw_compare_plot()  : 모델들의 지표를 막대그래프로 비교
+1) show_label()         : 이미지 한 장에 정답 라벨을 그려서 눈으로 확인
+2) draw_label_samples() : 데이터셋에서 무작위로 몇 장을 뽑아 라벨을 그려 한 장으로 저장
+                        (detection 은 박스, segmentation 은 폴리곤 선)
+3) draw_compare_plot()  : 모델들의 지표를 막대그래프로 비교
 """
 
 import os
@@ -22,16 +20,13 @@ IMAGE_EXT = ('.jpg', '.jpeg', '.png')
 CLASS_COLORS = [(255, 0, 0), (0, 100, 255), (0, 180, 0), (255, 160, 0)]
 
 
+# 클래스 번호에 맞는 색으로 반환
 def get_color(class_no):
-    """클래스 번호에 맞는 색을 돌려준다."""
     return CLASS_COLORS[class_no % len(CLASS_COLORS)]
 
 
+# 클래스 이름 이미지에 삽입
 def put_class_name(image, name, x, y, color):
-    """
-    클래스 이름을 이미지에 쓴다.
-    작은 이미지에서 글자가 밖으로 잘리지 않도록 글자 크기와 위치를 이미지 크기에 맞춰 조절한다.
-    """
     image_h, image_w = image.shape[:2]
 
     font_scale = max(0.4, image_w / 1000)
@@ -46,9 +41,8 @@ def put_class_name(image, name, x, y, color):
 
     return image
 
-
+# 파일 하나 확인용
 def show_label(image_file, txt_file, task='detect', class_names=None):
-    """이미지 한 장에 라벨을 그려 창으로 띄운다. (파일 하나만 따로 확인하고 싶을 때)"""
     image = cv2.imread(image_file)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
@@ -62,8 +56,8 @@ def show_label(image_file, txt_file, task='detect', class_names=None):
     plt.show()
 
 
+# 이미지에 박스 그리기
 def draw_detect_label(image, txt_file, class_names=None):
-    """이미지 위에 detection 라벨(박스)을 그린다."""
     image_h, image_w = image.shape[:2]
 
     for class_no, x1, y1, x2, y2 in read_label_boxes(txt_file, image_w, image_h):
@@ -76,6 +70,7 @@ def draw_detect_label(image, txt_file, class_names=None):
     return image
 
 
+# 이미지에 segmentation 라벨 그리기
 def draw_segment_label(image, txt_file, class_names=None):
     """이미지 위에 segmentation 라벨(폴리곤 외곽선)을 그린다."""
     image_h, image_w = image.shape[:2]

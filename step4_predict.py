@@ -1,14 +1,14 @@
 """
-역할: [4단계] 테스트 이미지로 결과를 확인한다.
+[4단계] 테스트 이미지로 결과를 확인
 
 폴더 안의 이미지를 한꺼번에 추론해서
-  - 결과 이미지(박스 또는 마스크가 그려진 그림)를 result/ 아래에 저장하고
-  - 이미지마다 어떤 안전장구가 몇 개 검출됐는지 출력한다.
+    - 결과 이미지(박스 또는 마스크가 그려진 그림)를 result/ 아래에 저장하고
+    - 이미지마다 어떤 안전장구가 몇 개 검출됐는지 출력
 
-YOLO 는 predict_images(), Mask R-CNN 은 predict_maskrcnn() 을 쓴다.
+YOLO 는 predict_images() 사용
 
-  개별 실행 : predict_one('detect') 또는 위 함수를 직접 호출
-  일괄 실행 : predict_all() 을 부르면 config/run_config.py 의 RUN_MODELS 에 있는 것만 추론
+개별 실행 : predict_one('detect') 또는 위 함수를 직접 호출
+일괄 실행 : predict_all() 을 부르면 config/run_config.py 의 RUN_MODELS 에 있는 것만 추론
 
 실행 : python step4_predict.py
 """
@@ -22,8 +22,7 @@ from models.mask_rcnn import load_trained_model
 from models.mask_rcnn import predict_images as maskrcnn_predict
 from models.unet import load_trained_model as unet_load
 from models.unet import predict_images as unet_predict
-from step2_train import (MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET, UNET_INPUT_SIZE,
-                         UNET_PATH)
+from step2_train import (MASKRCNN_PATH, NUM_CLASSES, SEGMENT_DATASET, UNET_INPUT_SIZE, UNET_PATH)
 from utils.run_info import print_settings
 
 # ---- 추론 설정 (가중치 경로는 config/run_config.py 에서 가져온다) ----
@@ -40,8 +39,8 @@ IMGSZ = 640
 SAVE_DIR = './result'
 
 
+# yolo8n 모델들 검출 결과 클래스 갯수 카운트
 def count_classes(result):
-    """YOLO 검출 결과에서 클래스별 개수를 세어 딕셔너리로 돌려준다."""
     counts = {}
 
     for box in result.boxes:
@@ -51,9 +50,9 @@ def count_classes(result):
     return counts
 
 
+# 이미지 폴더 예측하고 결과 저장
 def predict_images(weights, source=DETECT_TEST_DIR, save_name='predict'):
     """
-    YOLO 모델로 이미지 폴더(또는 이미지 한 장)를 추론하고 결과를 저장한다.
     save_name : 결과가 저장될 폴더 이름 (result/<save_name>)
     """
     model = YOLO(weights)
@@ -83,24 +82,24 @@ def predict_images(weights, source=DETECT_TEST_DIR, save_name='predict'):
     return results
 
 
+# 사용안함
 def predict_maskrcnn(source=SEGMENT_TEST_DIR, save_name='predict_maskrcnn'):
-    """Mask R-CNN 으로 이미지 폴더를 추론하고 결과를 저장한다."""
     model = load_trained_model(MASKRCNN_PATH, NUM_CLASSES)
     maskrcnn_predict(model, source, os.path.join(SAVE_DIR, save_name), CLASS_NAMES)
 
 
+# Unet 에측
 def predict_unet(source=SEGMENT_TEST_DIR, save_name='predict_unet'):
     """
     U-Net 으로 이미지 폴더를 추론하고 결과를 저장한다.
     박스가 없으므로 클래스별로 색을 칠한 그림만 나온다.
     """
     model = unet_load(UNET_PATH, NUM_CLASSES)
-    unet_predict(model, source, os.path.join(SAVE_DIR, save_name), CLASS_NAMES,
-                 input_size=UNET_INPUT_SIZE)
+    unet_predict(model, source, os.path.join(SAVE_DIR, save_name), CLASS_NAMES, input_size=UNET_INPUT_SIZE)
 
 
+# 모델 하나 테스트 이미지로 예측
 def predict_one(key):
-    """모델 하나(key)로 테스트 이미지를 추론한다."""
     source = DETECT_TEST_DIR if key == 'detect' else SEGMENT_TEST_DIR
 
     print_settings(f'{MODEL_NAMES[key]} 추론', {
@@ -123,11 +122,8 @@ def predict_one(key):
     return predict_maskrcnn()
 
 
+# RUN_MODELS 에 설정된 모델 모두 예측 진행
 def predict_all(run_models=RUN_MODELS):
-    """
-    RUN_MODELS 에 적힌 모델로 차례대로 추론한다.
-    학습이 안 끝나 가중치가 없는 모델은 건너뛴다.
-    """
     print(f'추론할 모델 : {run_models}')
 
     for key in run_models:

@@ -1,13 +1,13 @@
 """
-역할: IoU(Intersection over Union) 계산
+IoU(Intersection over Union) 계산
 
 mAP 는 ultralytics 가 알아서 계산해주지만, 두 모델을 비교할 때
 "정답 박스와 예측 박스가 얼마나 겹치는가"를 직접 보기 위해 평균 IoU 를 구한다.
 
 detection 라벨과 segmentation 라벨을 모두 '박스'로 바꿔서 비교하기 때문에
 두 모델을 같은 기준으로 볼 수 있다.
-  - detection 라벨  : <클래스> <cx> <cy> <w> <h>          -> 그대로 박스
-  - segment 라벨    : <클래스> <x1> <y1> <x2> <y2> ...    -> 폴리곤을 감싸는 박스로 변환
+    - detection 라벨  : <클래스> <cx> <cy> <w> <h>          -> 그대로 박스
+    - segment 라벨    : <클래스> <x1> <y1> <x2> <y2> ...    -> 폴리곤을 감싸는 박스로 변환
 """
 
 import os
@@ -15,11 +15,9 @@ import os
 IMAGE_EXT = ('.jpg', '.jpeg', '.png')
 
 
+# 두 박스의 IoU 계산(IoU = 겹치는 넓이 / 합친 넓이  (0 ~ 1, 1에 가까울수록 잘 맞춘 것))
+# 박스 형식은 (x1, y1, x2, y2) 픽셀 좌표
 def box_iou(box1, box2):
-    """
-    두 박스의 IoU 를 구한다. 박스 형식은 (x1, y1, x2, y2) 픽셀 좌표.
-    IoU = 겹치는 넓이 / 합친 넓이  (0 ~ 1, 1에 가까울수록 잘 맞춘 것)
-    """
     # 겹치는 사각형의 좌표
     x1 = max(box1[0], box2[0])
     y1 = max(box1[1], box2[1])
@@ -40,12 +38,8 @@ def box_iou(box1, box2):
 
     return inter / union
 
-
+# segmentation 라벨 읽고 리스트로 반환
 def read_label_polygons(txt_path):
-    """
-    segmentation 라벨 txt 를 읽어 [(클래스번호, [(x, y), (x, y), ...]), ...] 로 돌려준다.
-    좌표는 0~1 정규화된 값 그대로다. (그림을 그릴 때나 마스크를 만들 때 각자 픽셀로 바꾼다)
-    """
     polygons = []
 
     if not os.path.exists(txt_path):
@@ -70,10 +64,11 @@ def read_label_polygons(txt_path):
     return polygons
 
 
+# detection 라벨 읽고 최종 형태 리스트 반환
 def read_label_boxes(txt_path, image_w, image_h):
     """
-    라벨 txt 를 읽어 [(클래스, x1, y1, x2, y2), ...] 형태로 돌려준다.
-    정규화된 값(0~1)을 픽셀 좌표로 바꾼다.
+    라벨 txt 를 읽어 [(클래스, x1, y1, x2, y2), ...] 형태로 반환
+    정규화된 값(0~1)을 픽셀 좌표로 변환
     """
     boxes = []
 
@@ -111,14 +106,8 @@ def read_label_boxes(txt_path, image_w, image_h):
     return boxes
 
 
+# 테스트 이미지 전체 대상 IoU 평균 계산 
 def mean_iou(model, image_dir, conf=0.45):
-    """
-    테스트 이미지 전체에 대해 '정답 박스마다 가장 잘 맞은 예측 박스'의 IoU 를 구하고 평균을 낸다.
-    정답을 아예 못 찾은 경우는 IoU 0 으로 계산한다.
-
-    model     : YOLO 모델 객체
-    image_dir : 테스트 이미지 폴더
-    """
     label_dir = image_dir.replace('images', 'labels')
     image_list = [f for f in os.listdir(image_dir) if f.lower().endswith(IMAGE_EXT)]
 

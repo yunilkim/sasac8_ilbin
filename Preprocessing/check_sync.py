@@ -1,12 +1,8 @@
 """
-역할: 이미지 파일과 라벨 파일이 서로 짝이 맞는지(동기화) 확인한다.
-
-  - 이미지는 있는데 라벨 txt 가 없는 경우
-  - 라벨 txt 는 있는데 이미지가 없는 경우
-  - split(train/valid/test) 별 개수와 전체 총 개수
-
-이미지 a_001.jpg 의 짝은 같은 이름의 a_001.txt 이다.
-(확장자를 뗀 이름을 '파일 이름'이라고 부른다)
+이미지 파일과 라벨 파일이 서로 짝이 맞는지(동기화) 확인
+    - 이미지는 있는데 라벨 txt 가 없는 경우
+    - 라벨 txt 는 있는데 이미지가 없는 경우
+    - split(train/valid/test) 별 개수와 전체 총 개수
 """
 
 import os
@@ -15,9 +11,9 @@ SPLITS = ['train', 'valid', 'test']
 IMAGE_EXT = ('.jpg', '.jpeg', '.png')
 
 
+# 확장자를 뺀 파일이름과 원본파일 dict 화
 def get_name_dict(folder, exts):
     """
-    폴더 안의 파일을 {확장자 뺀 이름: 전체 파일명} 딕셔너리로 만든다.
     예) {'a_001': 'a_001.jpg', 'a_002': 'a_002.jpg'}
     """
     names = {}
@@ -32,11 +28,10 @@ def get_name_dict(folder, exts):
 
     return names
 
-
+# split 하나에 대해 이미지와 라벨의 착 확인
 def check_split_sync(dataset_dir, split):
     """
-    split 하나에 대해 이미지와 라벨의 짝을 확인한다.
-    돌려주는 값 : (문제 목록, 이미지 개수, 라벨 개수)
+    반환값 : (문제 목록, 이미지 개수, 라벨 개수)
     """
     image_dir = os.path.join(dataset_dir, split, 'images')
     label_dir = os.path.join(dataset_dir, split, 'labels')
@@ -71,10 +66,10 @@ def check_split_sync(dataset_dir, split):
     return problems, len(images), len(labels)
 
 
+# 데이터셋 전체의 동기화 및 카운트 출력
 def check_sync(dataset_dir):
     """
-    데이터셋 전체(train/valid/test)의 동기화를 확인하고 개수를 출력한다.
-    돌려주는 값 : (문제 목록, 개수 요약 딕셔너리)
+    반환값 : (문제 목록, 개수 요약 딕셔너리)
     """
     all_problems = []
     counts = {}
