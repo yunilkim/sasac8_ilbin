@@ -1,0 +1,15 @@
+﻿항목,yolov8n(detect),yolov8n-seg,U-Net
+mAP50,0.9516,0.9457,
+mAP50-95,0.7593,0.7723,
+Precision,0.9231,0.919,
+Recall,0.9067,0.8909,
+F1,0.9149,0.9048,
+추론시간(ms),5.8806,7.0549,8.8424
+FPS,170.0496,141.7446,113.091
+mask_mAP50,,0.9127,
+mask_mAP50-95,,0.659,
+pixel_mIoU,,,0.7785
+pixel_Dice,,,0.8753
+pixel_accuracy,,,0.9578
+IoU_class1,,,0.7589
+IoU_class2,,,0.7981
