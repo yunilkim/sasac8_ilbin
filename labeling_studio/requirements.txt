@@ -1,0 +1,53 @@
+# ==============================================================================
+#  의존성 — torch 는 여기 없다. 아래를 먼저 읽을 것.
+# ==============================================================================
+#
+#  [ torch 를 이 파일에 넣지 않은 이유 ]
+#
+#  개발 환경은 RTX 5070 Ti(Blackwell · sm_120)이고 torch 2.12.0.dev+cu130
+#  나이트리를 쓴다. 안정판 CUDA 빌드는 이 아키텍처를 아직 못 실행한다.
+#  그런데 그 버전 문자열을 requirements 에 그대로 박으면 PyPI 에 없어서 설치가
+#  깨지고, 반대로 `torch` 라고만 적으면 안정판이 나이트리를 덮어써 CUDA 가 죽는다.
+#  그래서 torch/torchvision 은 **손으로 먼저 깔고** 여기서는 건드리지 않는다.
+#
+#      # Blackwell(50xx) 계열
+#      pip install --pre torch torchvision --index-url https://download.pytorch.org/whl/nightly/cu130
+#
+#      # 그 이전 세대는 안정판으로 충분하다 (본인 CUDA 버전에 맞출 것)
+#      pip install torch torchvision --index-url https://download.pytorch.org/whl/cu124
+#
+#  확인:  python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+#
+# ------------------------------------------------------------------------------
+#
+#  [ 반드시 설정할 환경변수 ]
+#
+#      YOLO_AUTOINSTALL=false
+#
+#  ultralytics 는 의존성이 빠졌다고 판단하면 `uv pip install` 로 **시스템 파이썬에**
+#  자동 설치를 시도한다. 실제로 CLIP 을 깔려다 torch 116MB 재설치를 시도한 적이
+#  있고, 성공했다면 위의 나이트리가 안정판으로 덮여 CUDA 가 깨졌을 것이다.
+#  권한 오류로 우연히 막혔다. 런처(launch.ps1)와 워커는 이 값을 이미 설정한다.
+#
+#  가상환경은 `--system-site-packages` 로 만들면 이미 깔린 torch 를 물려받아
+#  수 GB 재다운로드를 피할 수 있다.
+#
+# ==============================================================================
+
+# ---- 필수 -------------------------------------------------------------------
+ultralytics>=8.4.120        # YOLO 학습·추론. SAM 2.1 은 8.3.237 이상
+
+#  opencv 는 4.x 로 묶는다. 렌더러 전체가 이 위에 있고, 이 저장소의 측정치는
+#  전부 4.13 에서 나왔다. 5.0 에서도 렌더는 통과했지만(폴리곤·채움·고스트 확인)
+#  측정의 재현이 이 프로젝트의 값어치라 검증한 메이저 버전에 머문다.
+#  5.x 로 올릴 때는 tools/ 의 측정을 다시 돌려 값이 같은지 확인할 것.
+opencv-python>=4.10,<5
+
+numpy>=2.0
+pillow>=10.0                # Tk 캔버스 블리터. 12 에서 PhotoImage 시그니처가 바뀌었다
+PyYAML>=6.0                 # data.yaml 파싱
+
+# ---- 선택 -------------------------------------------------------------------
+# requests                  # VLM 격자 검수(tools/vlm_grid_review.py)에서 LM Studio 호출
+# open-clip-torch           # YOLO-World zero-shot 경로. --no-deps 로 넣을 것
+#                           # (그냥 넣으면 torch 를 같이 끌고 온다)
