@@ -36,19 +36,19 @@ if __name__ == '__main__':
     print(f'실행할 모델 : {RUN_MODELS}')
 
     # step1. 데이터셋 검사 (문제가 있으면 result/check_detect.csv 로 저장된다)
-    check_detect_dataset()
+    # check_detect_dataset()
 
     # segmentation 라벨이 들어오면 이것도 검사한다
     # check_segment_dataset()
 
     # step2. 학습 (RUN_MODELS 에 있는 모델만)
-    # train_all()
+    train_all()
 
     # step3. 평가
-    # eval_all()
+    eval_all()
 
     # step4. 테스트 이미지 추론
-    # predict_all()
+    predict_all()
 
     # step5. 세 모델 비교 -> result/compare.csv, result/compare.jpg
     # (세 모델이 모두 학습돼 있어야 실행된다)

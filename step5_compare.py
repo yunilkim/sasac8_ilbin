@@ -35,7 +35,7 @@ from utils.table import print_table, save_table_csv
 from utils.visualize import BOX_PLOT_KEYS, PIXEL_PLOT_KEYS, draw_compare_plot
 
 # 각 모델의 테스트 이미지 폴더
-DETECT_TEST_DIR = './Data/vest-helmet.v1i_roboflow/test/images'
+DETECT_TEST_DIR = './Data/vest-helmet_crop_dedup/test/images'
 
 # segmentation 데이터셋 경로는 step2_train.py 한 곳에서만 관리한다
 SEGMENT_TEST_DIR = os.path.join(SEGMENT_DATASET, 'test', 'images')

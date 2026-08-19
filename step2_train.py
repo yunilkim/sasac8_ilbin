@@ -78,13 +78,13 @@ MASKRCNN_PATH = WEIGHTS['maskrcnn']
 # ---- U-Net 학습 설정 ----
 # ResNet34 인코더(ImageNet 사전학습)를 쓰는 시맨틱 분할 모델.
 # 검출용 부속(RPN, ROI Head)이 없어 Mask R-CNN 보다 가볍다.
-UNET_EPOCHS = 30
+UNET_EPOCHS = 100
 # UNET_EPOCHS = 1     # test epochs
 
 # 4GB GPU 에서 2.65GB 를 쓴다. (batch 4 는 3.45GB 로 아슬아슬하고 속도는 같다)
-UNET_BATCH = 3
-UNET_LR = 0.001          # Adam 을 쓰므로 SGD 보다 작은 값을 쓴다
-UNET_PATIENCE = 7
+UNET_BATCH = 6
+UNET_LR = 0.0015          # Adam 을 쓰므로 SGD 보다 작은 값을 쓴다
+UNET_PATIENCE = 15
 UNET_NAME = 'vest_helmet_unet'
 UNET_PATH = WEIGHTS['unet']
 
