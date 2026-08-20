@@ -388,7 +388,7 @@ yolov8n-seg 는 객체마다 마스크를 주고 U-Net 은 지도 한 장을 준
 
 ### 처음부터 다시 돌리기
 
-`Data/` 는 용량이 커서 git 에 없다. 데이터가 준비되면 순서대로 실행한다.
+`Data/` 폴더가 준비되면 `config/` 폴더내의 경로를 변경 후 준비되면 순서대로 실행한다.
 
 1. `python step1_check.py` 로 라벨 검사
 2. `python -m Preprocessing.convert_to_maskrcnn` → `python -m Preprocessing.convert_to_unet`
