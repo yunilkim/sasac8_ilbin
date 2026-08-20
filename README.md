@@ -48,6 +48,20 @@ yolov8n-seg 와 같은 인스턴스 분할이라 대비가 약해서 시맨틱 �
 
 수치 비교는 [`model_compare/README.md`](model_compare/README.md#결과) 를 본다.
 
+### 외부 데이터 예측
+
+학습에 쓰지 않은 영상에서 뽑은 프레임에 세 모델을 그대로 적용한 결과다.
+배경도 조명도 장비 색도 데이터셋과 다른데 세 모델 모두 찾아낸다.
+(영상 출처 : [Youtube](https://www.youtube.com/watch?v=i4492vQqMrU))
+
+<p align="center">
+  <img src="docs/external_1.jpg" width="32%">
+  <img src="docs/external_2.jpg" width="32%">
+  <img src="docs/external_3.jpg" width="32%">
+</p>
+
+`model_compare/step7_external.py` 로 만든다.
+
 ## 데이터셋
 
 [vest-helmet (Roboflow Universe)](https://universe.roboflow.com/uhhh/vest-helmet-wlbch) 를 쓴다.

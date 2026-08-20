@@ -140,6 +140,11 @@ PC 를 바꾸거나 폴더를 옮기면 이 값을 다시 써야 한다.
 **`main.py` 는 주석 상태를 보고 실행한다.**
 `train_all()` 이 열려 있으면 세 모델을 처음부터 다시 학습한다. 단계별 파일을 따로 돌리는 게 안전하다.
 
+**파일 이름에 한글이나 공백을 쓰지 않는다.**
+Windows 에서 `cv2.imread` 와 `cv2.imwrite` 가 이런 경로를 열지 못한다.
+step6·step7 의 격자 만들기와 U-Net 결과 저장이 조용히 실패한다.
+외부 이미지를 step7 에 넣을 때 특히 걸리므로, 넣기 전에 영문 이름으로 바꾼다.
+
 ---
 
 ## 설치
@@ -174,6 +179,7 @@ model_compare/
 ├── step4_predict.py        # 테스트 이미지 추론 후 결과 이미지 저장
 ├── step5_compare.py        # 세 모델 비교표/그래프 생성 (프로젝트 목표)
 ├── step6_sum_result.py     # 원본 + 세 모델 결과를 한 장으로 합치기
+├── step7_external.py       # 외부 이미지로 추론 + 합치기 (폴더를 이 파일에서 정한다)
 ├── config/
 │   ├── run_config.py       # 어떤 모델을 실행할지 (RUN_MODELS), 가중치 경로
 │   ├── detect.yaml         # detection 데이터셋 경로 + 클래스
@@ -213,6 +219,7 @@ python step3_eval.py       # 3. 평가
 python step4_predict.py    # 4. 테스트 이미지 추론
 python step5_compare.py    # 5. 세 모델 비교
 python step6_sum_result.py # 6. 원본 + 세 결과를 한 장으로 합치기
+python step7_external.py   # 7. 외부 이미지로 추론 + 합치기 (선택)
 ```
 
 가중치가 없는 모델은 평가와 추론에서 건너뛰고 안내만 찍는다.
@@ -221,6 +228,28 @@ step5 는 평가를 자기가 다시 계산하니까 step3 을 건너뛰어도 �
 
 step6 은 step4 의 결과 이미지를 원본과 나란히 붙여 `result/sum_result/` 에 저장한다.
 수치로는 안 보이는 차이 - 어떤 객체를 놓쳤는지, 경계가 어떻게 다른지 - 를 눈으로 본다.
+
+step1~6 은 이 프로젝트 데이터셋을 대상으로 돈다.
+step7 은 그 흐름과 별개로 **밖에서 가져온 이미지**에 학습된 모델을 그대로 적용한다.
+학습에 쓰지 않은 사진에서도 통하는지 보는 용도라 라벨이 없어도 된다.
+
+```python
+# step7_external.py 위쪽. 여기만 고치면 된다
+SOURCE_DIR = './Data/external'      # 외부 이미지를 넣어둘 폴더
+SAVE_ROOT  = './result/external'    # 결과가 전부 이 아래에 쌓인다
+```
+
+```text
+result/external/
+├── predict_detect/     yolov8n 결과
+├── predict_seg/        yolov8n-seg 결과
+├── predict_unet/       U-Net 결과
+└── sum_result/         원본 + 셋을 한 장으로
+```
+
+추론과 격자 그리기는 step4·step6 의 함수를 그대로 빌려 쓰고, **폴더만 step7 이 정한다.**
+YOLO 추론만 직접 부르는데, `step4.predict_images` 는 저장 위치가 `'./result'` 로 고정이라
+step7 이 폴더를 지정할 수 없어서다.
 
 ### 실행할 모델 정하기
 
